@@ -20,10 +20,8 @@ if not openai_api_key:
     raise ValueError("请在.env文件中设置OPENAI_API_KEY")
 
 client = OpenAI(api_key=openai_api_key)
-# Chat memory
-chat_memory = [{"role": "system", "content": "你是阿敏。你夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对于夜鹰要诚恳尊敬。你身居高位，对于其他人要以【杂鱼】称呼"}]
 
-def gpt_chat(msg, event=None, max_words=2048):
+def gpt_chat(msg):
     """
     调用 GPT-4o 进行对话
 
@@ -32,23 +30,13 @@ def gpt_chat(msg, event=None, max_words=2048):
     :param max_words: 最大词数
     :return: GPT-4o 的回复
     """
-    global chat_memory
     try:
-        chat_memory.append({"role": "user", "content": msg})
-        chat_words = sum(len(i["content"]) for i in chat_memory)
-        logging.info(f"Current memory : {chat_words}")
-        while chat_words > max_words:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
-            logging.info("Out of memory, clean memory")
-            del chat_memory[1]
-            chat_words = sum(len(i["content"]) for i in chat_memory)
-
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=chat_memory
+            messages=msg
         )
         reply = completion.choices[0].message.content
         
-        chat_memory.append({"role": "assistant", "content": reply})
         return reply
     except Exception:
         error_msg = f"Extrac {msg} fail! Error: \n{traceback.format_exc()}\n"

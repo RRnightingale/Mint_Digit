@@ -39,10 +39,12 @@ async def root(request: Request):
         response = llob_utils.send_private_message(user_id, reply_text)  # 向user发送私信
         logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")
     elif message_type == 'group' and group_id:
-        reply_text = mint_utils.replay_group(user_name, raw_message[len(AT_MINT):])  # 调用reply,记录信息
-        if raw_message.startswith(AT_MINT):
+        if AT_MINT in raw_message:
+            reply_text = mint_utils.replay_group(user_name, raw_message[len(AT_MINT):])  # 调用reply,记录信息
             response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id )  # 向群发送消息
             logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
+        else:
+            mint_utils.save_chat_memory(user_name, raw_message)
     else:
         logging.error("未知的消息类型或缺少群ID")
         return {"error": "未知的消息类型或缺少群ID"}
