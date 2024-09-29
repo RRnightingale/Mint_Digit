@@ -21,7 +21,7 @@ if not openai_api_key:
 
 client = OpenAI(api_key=openai_api_key)
 
-def gpt_chat(msg):
+def gpt_chat(msg: list):
     """
     调用 GPT-4o 进行对话
 

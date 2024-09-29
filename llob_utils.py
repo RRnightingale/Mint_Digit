@@ -72,3 +72,25 @@ def send_group_message_with_at(group_id, message, user_id):
     response = requests.post(f'{BASE_URL}/send_group_msg', json=payload)
     logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
     return response
+
+
+def set_group_ban(group_id, user_id, duration=10 * 60):
+    """
+    设置群禁言
+
+    参数:
+    group_id (int): 群ID
+    user_id (int): 用户ID
+    duration (int): 禁言时长，单位为秒，默认为10分钟
+
+    返回:
+    Response: 请求的响应
+    """
+    payload = {
+        'group_id': group_id,
+        'user_id': user_id,
+        'duration': duration
+    }
+    response = requests.post(f'{BASE_URL}/set_group_ban', json=payload)
+    logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
+    return response

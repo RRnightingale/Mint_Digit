@@ -20,5 +20,13 @@ class TestSendPrivateMessage(unittest.TestCase):
         self.assertEqual(response_data['retcode'], 0)
         self.assertIn('message_id', response_data['data'])
 
+    def test_set_group_ban(self):
+        group_id = 237893748
+        user_id = 1637201761
+        duration = 10 * 60
+
+        # 调用实际的 set_group_ban 函数
+        response = llob_utils.set_group_ban(group_id, user_id, duration)
+
 if __name__ == '__main__':
     unittest.main()
