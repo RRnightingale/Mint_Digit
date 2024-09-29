@@ -33,3 +33,42 @@ def send_private_message(user_id, message):
     response = requests.post(f'{BASE_URL}/send_private_msg', json=payload)
     logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
     return response
+
+
+def send_group_message(group_id, message):
+    payload = {
+        'group_id': group_id,
+        'message': [{
+            'type': 'text',
+            'data': {
+                'text': message
+            }
+        }]
+    }
+    logging.debug(f"发送消息的 payload: {payload}")
+    response = requests.post(f'{BASE_URL}/send_group_msg', json=payload)
+    logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
+    return response
+
+def send_group_message_with_at(group_id, message, user_id):
+    payload = {
+        'group_id': group_id,
+        'message': [
+            {
+                "type": "at",
+                "data": {
+                    "qq": user_id,
+                    "name": "此栏无效，此人在群里"
+                }
+            },
+            {
+                'type': 'text',
+                'data': {
+                'text': message
+            }
+        }]
+    }
+    logging.debug(f"发送消息的 payload: {payload}")
+    response = requests.post(f'{BASE_URL}/send_group_msg', json=payload)
+    logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
+    return response

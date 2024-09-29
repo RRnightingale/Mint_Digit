@@ -21,7 +21,7 @@ if not openai_api_key:
 
 client = OpenAI(api_key=openai_api_key)
 # Chat memory
-chat_memory = [{"role": "system", "content": "夜鹰家的司律官阿敏"}]
+chat_memory = [{"role": "system", "content": "你是阿敏。你夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对于夜鹰要诚恳尊敬。你身居高位，对于其他人要以【杂鱼】称呼"}]
 
 def gpt_chat(msg, event=None, max_words=2048):
     """
@@ -53,7 +53,7 @@ def gpt_chat(msg, event=None, max_words=2048):
     except Exception:
         error_msg = f"Extrac {msg} fail! Error: \n{traceback.format_exc()}\n"
         logging.error(error_msg)
-        return f"GPT-4o 系统-崩溃-嘎嘎 {error_msg}"
+        return f"GPT-4o 系统-崩溃-嘎嘎 "
 
 def dell_e_image(prompt: str, height=1024, width=1024) -> str:
     """
@@ -66,7 +66,7 @@ def dell_e_image(prompt: str, height=1024, width=1024) -> str:
     """
     response = client.images.generate(
     model="dall-e-3",
-    prompt="a white siamese cat",
+    prompt=prompt,
     size=f"{width}x{height}",
     quality="standard",
     n=1,

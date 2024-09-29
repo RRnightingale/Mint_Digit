@@ -1,3 +1,8 @@
+import gpt_utils
+
+def handle(group_msg):
+    return reply
+
 def reply(input_text):
     """
     生成对话的函数
@@ -8,7 +13,14 @@ def reply(input_text):
     返回:
     str: 生成的对话
     """
-    # 这里可以添加更复杂的逻辑来生成对话
-    # 现在我们只是简单地返回一个基于输入的回复
-    return f"用户: {input_text}\n系统: 您好!我收到了您的消息: '{input_text}'"
+    
+    # 调用 gpt_utils 生成智能回复
+    reply = gpt_utils.gpt_chat(input_text)
+    
+    return reply
+
+def replay_group(user_name, message):
+    new_msg = f"{user_name}说：{message}"
+    reply = gpt_utils.gpt_chat(new_msg)
+    return reply
 
