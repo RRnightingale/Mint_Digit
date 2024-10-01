@@ -1,13 +1,18 @@
 import gpt_utils
+import doubao_utils
 import llob_utils
 import logging
 from collections import defaultdict
 import time
 
+MINT_EVAIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼"
+
+MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
+
 # Chat memory
-chat_memory = [{"role": "system", "content": "你是阿敏。你夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以【杂鱼】称呼"}]
+chat_memory = [{"role": "system", "content": MINT_CUTE}]
 MAX_WORDS = 2048
-AT_MINT = "[CQ:at,qq=3995633031,name=阿敏Digit]"
+AT_MINT = "[CQ:at,qq=3995633031"
 MAX_MESSAGES_PER_HOUR = 10
 
 # 用户消息计数
@@ -112,7 +117,7 @@ def check_dulplicate():
     last_three_messages = [entry["content"].split("说：", 1)[1] for entry in chat_memory[-3:]]
     return len(set(last_three_messages)) == 1
 
-def reply(user_name, input_text):
+def reply(user_name, input_text, model='doubao'):
     """
     生成对话的函数
 
@@ -125,24 +130,14 @@ def reply(user_name, input_text):
     """
     # 调用 gpt_utils 生成智能回复
     save_chat_memory(user_name, input_text)
-    reply = gpt_utils.gpt_chat(chat_memory)
-    
+    if model == 'gpt':  
+        reply = gpt_utils.chat(chat_memory)
+    elif model == 'doubao':
+        reply = doubao_utils.chat(chat_memory)
     return reply
 
-def replay_group(user_name, message):
-    """
-    生成群聊对话的函数
-
-    参数:
-    user_name (str): 用户名
-    message (str): 输入的文字
-
-    返回:
-    str: 生成的对话
-    """
-    save_chat_memory(user_name, message)
-    reply = gpt_utils.gpt_chat(chat_memory)
-    return reply
+def replay_group(user_name, message, model='doubao'):
+    return reply(user_name, message, model)
 
 def save_chat_memory(user_name, message):
     """
