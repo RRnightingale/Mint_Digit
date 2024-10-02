@@ -1,22 +1,55 @@
 import gpt_utils
 import doubao_utils
 import llob_utils
+import re
 import logging
 from collections import defaultdict
 import time
+import json
 
 MINT_EVAIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼"
 
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
+INSTRUCTION = """
+你的回复包含两部分，台词和动作，为严格的json格式
+
+# 台词
+答复的内容
+
+# 动作
+你将执行的动作，需要严格按照函数形式给出。通常情况下，你不需要动作。
+目前支持的动作
+禁言（用户, 时间）
+用户：用户名，str
+时间：秒，int，通常建议60
+
+例如
+{"台词": "好哥哥，你已经违反了群规，现在我要禁言你 1 分钟", "动作": "禁言(孙悟空, 60)"}
+
+"""
+MINT_NAME = "阿敏"
 # Chat memory
-chat_memory = [{"role": "system", "content": MINT_CUTE}]
+import os
+
+# 尝试从 memory.log 读取聊天记录
+if os.path.exists('memory.log'):
+    with open('memory.log', 'r', encoding='utf-8') as f:
+        chat_memory = json.load(f)
+else:
+    # 如果文件不存在，使用原始逻辑
+    chat_memory = [{"role": "system", "content": MINT_CUTE + INSTRUCTION}]
+
 MAX_WORDS = 2048
 AT_MINT = "[CQ:at,qq=3995633031"
 MAX_MESSAGES_PER_HOUR = 10
+current_group_id = None     # 群ID
 
 # 用户消息计数
 user_message_count = defaultdict(lambda: {"count": 0, "last_reset": time.time()})
+# 用户ID到用户名的映射
+user_id_to_name = {}
+
 
 def handle(data):
     """
@@ -52,15 +85,20 @@ def handle(data):
         logging.debug(f"生成的回复: {reply_text}")
         response = llob_utils.send_private_message(user_id, reply_text)  # 向user发送私信
         logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")
-    elif message_type == 'group' and group_id:
+    elif message_type == 'group' and group_id: 
+        global current_group_id
+        current_group_id = group_id
+        user_id_to_name[user_id] = user_name
         # 处理群消息
         if AT_MINT in raw_message:
             if check_user_message_limit(user_id):
-                reply_text = replay_group(user_name, raw_message[len(AT_MINT):])  # 调用reply,记录信息
+                # 移除第一个 [xx] 开头的内容
+                cleaned_message = re.sub(r'^\[.*?\]\s*', '', raw_message.strip())
+                reply_text = replay_group(user_name, cleaned_message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
             else:
-                reply_text = f"{user_name}杂鱼，你已达到每小时最大请求次数。赶紧充钱"
+                reply_text = f"{user_name} 杂鱼，你已达到每小时最大请求次数。赶紧充钱"
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
         else:
             save_chat_memory(user_name, raw_message)
@@ -134,7 +172,50 @@ def reply(user_name, input_text, model='doubao'):
         reply = gpt_utils.chat(chat_memory)
     elif model == 'doubao':
         reply = doubao_utils.chat(chat_memory)
-    return reply
+
+    reply_dict = json.loads(reply)
+    word = reply_dict["台词"]
+    action = reply_dict["动作"]
+
+    logging.info(f"reply: {reply}")
+
+    # 执行动作
+    if action:
+        execute_action(action)
+    # 保存聊天记录
+    save_chat_memory(MINT_NAME, word)
+    return word
+
+def execute_action(action):
+    """
+    执行动作函数
+
+    参数:
+    action (str): 动作字符串
+
+    返回:
+    None
+    """
+    logging.info(f"execute_action: {action}")
+    if action.startswith("禁言"):
+        try:
+            
+            # 解析动作字符串
+            _, params = action.split("(")
+            params = params.rstrip(")").split(",")
+            user_name = params[0].strip()
+            duration = int(params[1].strip())
+            user_id = user_id_to_name.get(user_name)
+            if user_id is None:
+                logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
+                return
+            # 执行禁言操作
+            llob_utils.set_group_ban(current_group_id, user_id, duration)
+            logging.info(f"已对用户 {user_id} 执行禁言操作，时长为 {duration} 秒")
+        except Exception as e:
+            logging.error(f"执行禁言操作时出错：{str(e)}")
+    else:
+        logging.warning(f"未知的动作：{action}")
 
 def replay_group(user_name, message, model='doubao'):
     return reply(user_name, message, model)
@@ -158,4 +239,12 @@ def save_chat_memory(user_name, message):
         logging.info("Out of memory, clean memory")
         del chat_memory[1]
         chat_words = sum(len(i["content"]) for i in chat_memory)
+    
+    # 输出更新后的 memory
+    logging.info(f"Updated chat memory: {chat_memory}")
+    
+    # 存到本地 memory.log（覆盖）
+    with open("memory.log", "w", encoding="utf-8") as f:
+        f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
+    
     return chat_memory

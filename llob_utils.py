@@ -64,7 +64,7 @@ def send_group_message_with_at(group_id, message, user_id):
             {
                 'type': 'text',
                 'data': {
-                'text': message
+                'text': '' + message
             }
         }]
     }
