@@ -7,7 +7,7 @@ from collections import defaultdict
 import time
 import json
 
-MINT_EVAIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼"
+MINT_EVIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼。你需要维护群里的秩序。对于赞美夜鹰的，要给予奖励。对于侮辱夜鹰，破坏和谐的，要封禁他10分钟"
 
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
@@ -173,9 +173,13 @@ def reply(user_name, input_text, model='doubao'):
     elif model == 'doubao':
         reply = doubao_utils.chat(chat_memory)
 
-    reply_dict = json.loads(reply)
-    word = reply_dict["台词"]
-    action = reply_dict["动作"]
+    try:
+        reply_dict = json.loads(reply)
+        word = reply_dict["台词"]
+        action = reply_dict["动作"]
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
+        return "对不起，我无法理解您的请求。"
 
     logging.info(f"reply: {reply}")
 
@@ -205,9 +209,13 @@ def execute_action(action):
             params = params.rstrip(")").split(",")
             user_name = params[0].strip()
             duration = int(params[1].strip())
-            user_id = user_id_to_name.get(user_name)
+            user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
             if user_id is None:
-                logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
+                # 检查用户名是否存在于user_id_to_name字典中
+                if user_name in user_id_to_name.keys():
+                    user_id = user_name
+                else:
+                    logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
                 return
             # 执行禁言操作
             llob_utils.set_group_ban(current_group_id, user_id, duration)
@@ -240,8 +248,8 @@ def save_chat_memory(user_name, message):
         del chat_memory[1]
         chat_words = sum(len(i["content"]) for i in chat_memory)
     
-    # 输出更新后的 memory
-    logging.info(f"Updated chat memory: {chat_memory}")
+    # # 输出更新后的 memory
+    # logging.info(f"Updated chat memory: {chat_memory}")
     
     # 存到本地 memory.log（覆盖）
     with open("memory.log", "w", encoding="utf-8") as f:
