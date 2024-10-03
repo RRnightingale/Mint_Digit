@@ -11,8 +11,9 @@ load_dotenv()
 # 从环境变量中获取API访问的URL和鉴权信息
 API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 API_KEY = os.getenv("DOUBAO_API_KEY")  # 从 .env 文件中获取 DOUBAO_API_KEY
-# model_name = "ep-20241001234826-5m4j9"  # 32k
-model_name = 'ep-20241002215521-dnr7t'  # 128k
+# model_name = "ep-20241001234826-5m4j9"  # 32lite
+# model_name = 'ep-20241002215521-dnr7t'  # 128 pro
+model_name = "ep-20241003070234-2c94h" # 128lite
 
 def chat(messages):
     headers = {
