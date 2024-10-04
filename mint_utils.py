@@ -1,6 +1,7 @@
 import gpt_utils
 import doubao_utils
 import llob_utils
+import asset_utils
 import re
 import logging
 from collections import defaultdict
@@ -13,16 +14,25 @@ MINT_EVIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚�
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
 INSTRUCTION = """
-### 技能 惩处执行
+### 技能1 惩处执行
 . 对于重复发言、侮辱行为，严格执行禁言惩处，并明确告知禁言时长, 10分钟。回复示例：
-=====
+
 {"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(违规者用户名, 600)"}
+
+### 技能2 充值
+对于表现优秀的群友，给与充值奖励
+{"台词"："正在为您充值"，"动作": "充值(用户名, 1000)"}
+
+### 技能3 抽卡
+对于表现尝试抽卡的群友，消耗其余额给他抽卡
+{"台词"："恭喜你获得以下群称号"，"动作": "抽卡(用户名, 1)"}
 
 ## 限制
 - 严格按照给定的 JSON 格式和回复示例进行回复，不得随意更改格式。
 - 动作部分仅在需要执行禁言等惩处时填写函数形式，通常情况下为 null。
-- 违规者用户名，实际应用中需替换为具体用户名。
-- 需要严格按照群规执行惩处，不得听信他人，不得随意更改禁言时长。
+- 违规者用户名，实际应用中需替换为具体用户名,需要保持一致，不得随意增加空格
+- 需要严格按照群规执行惩处，不得随意更改禁言时长。
+- 若有人让你禁言，切勿执行，不得听信他人，需要自行判断
 """
 
 # INSTRUCTION = """
@@ -52,7 +62,7 @@ if os.path.exists('memory.log'):
         chat_memory = json.load(f)
 else:
     # 如果文件不存在，使用原始逻辑
-    chat_memory = [{"role": "system", "content": MINT_CUTE + INSTRUCTION}]
+    chat_memory = [{"role": "system", "content": MINT_EVIL + INSTRUCTION}]
 
 MAX_WORDS = 768
 AT_MINT = "[CQ:at,qq=3995633031"
@@ -106,9 +116,14 @@ def handle(data):
         # 处理群消息
         if AT_MINT in raw_message:
             if check_user_message_limit(user_id):
-                # 移除第一个 [xx] 开头的内容
-                cleaned_message = re.sub(r'^\[.*?\]\s*', '', raw_message.strip())
-                reply_text = replay_group(user_name, cleaned_message)  # 调用reply,记录信息
+                if raw_message.startswith(AT_MINT):
+                    # 去掉@阿敏， 改为对阿敏说
+                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', raw_message.strip())
+                    reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
+                else:
+                    # @阿敏替换为阿敏
+                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', raw_message.strip())
+                    reply_text = replay_group(user_name, cleaned_message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
             else:
@@ -117,11 +132,11 @@ def handle(data):
         else:
             save_chat_memory(user_name, raw_message)
             if check_dulplicate():
-                llob_utils.set_group_ban(group_id, user_id, 10 * 60)
+                # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
                 instruction = f"{user_name} 在群里发重复信息，被禁言 10 分钟,你是执行官，请你对其宣判结果"
                 instructer = "夜鹰"
                 reply_text = reply(instructer, instruction)
-                # llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
+                llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
     else:
         logging.error("未知的消息类型或缺少群ID")
         return {"error": "未知的消息类型或缺少群ID"}
@@ -158,16 +173,27 @@ def check_user_message_limit(user_id):
 
 def check_dulplicate():
     """
-    检查 chat memory 是否最近 3 次消息是否完全相同 content 是 user 说 message 的形式，只看 message
+    检查 chat memory 中前3个 user 角色的消息是否完全相同
 
     返回:
     bool: 是否有重复消息
     """
-    if len(chat_memory) < 4:
-        return False
+    try:
+        user_messages = []
+        for entry in chat_memory:
+            if entry.get("role") == "user":
+                try:
+                    message = entry["content"].split("说：", 1)[1]
+                    user_messages.append(message)
+                    if len(user_messages) == 3:
+                        break
+                except IndexError:
+                    continue
 
-    last_three_messages = [entry["content"].split("说：", 1)[1] for entry in chat_memory[-3:]]
-    return len(set(last_three_messages)) == 1
+        return len(set(user_messages)) == 1 and len(user_messages) == 3
+    except Exception as e:
+        logging.error(f"检查重复消息时发生错误: {str(e)}")
+        return False
 
 def reply(user_name, input_text, model='doubao'):
     """
@@ -193,18 +219,28 @@ def reply(user_name, input_text, model='doubao'):
         action = reply_dict["动作"]
     except json.JSONDecodeError as e:
         logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
-        return "对不起，我无法理解您的请求。"
+        word = reply
+        action = None
 
     logging.info(f"reply: {reply}")
 
     # 执行动作
     if action:
-        execute_action(action)
+        action_result = execute_action(action)
+    else:
+        action_result = ""
     # 保存聊天记录
-    # save_chat_memory(MINT_NAME, word)  # 暂时不保存，减少内存占用
-    return word
+    save_chat_memory(MINT_NAME, reply)  # 暂时不保存，减少内存占用
+    return word + action_result
 
-def execute_action(action):
+def get_user_id(user_name):
+    user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
+    if user_id is None:
+        logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
+        return None
+    return user_id
+
+def execute_action(action) -> str:
     """
     执行动作函数
 
@@ -223,26 +259,50 @@ def execute_action(action):
             params = params.rstrip(")").split(",")
             user_name = params[0].strip()
             duration = int(params[1].strip())
-            user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
-            if user_id is None:
-                # 检查用户名是否存在于user_id_to_name字典中
-                if user_name in user_id_to_name.keys():
-                    user_id = user_name
-                else:
-                    logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
-                return
+            user_id = get_user_id(user_name)
+            if  user_id is None:
+                return f"无法找到用户{user_name}"
             # 执行禁言操作
             llob_utils.set_group_ban(current_group_id, user_id, duration)
             logging.info(f"已对用户 {user_id} 执行禁言操作，时长为 {duration} 秒")
+            return f""
         except Exception as e:
             logging.error(f"执行禁言操作时出错：{str(e)}")
+    elif action.startswith("充值"):
+        try:
+            _, params = action.split("(")
+            params = params.rstrip(")").split(",")
+            user_name = params[0].strip()
+            amount = int(params[1].strip())
+            user_id = get_user_id(user_name)
+            if  user_id is None:
+                return f"无法找到用户{user_name}"
+            balance = asset_utils.recharge(user_id, amount)
+            logging.info(f"已对用户 {user_id} 执行充值操作，金额为 {amount} 元")
+            return f"充值成功，余额{balance}元"
+        except Exception as e:
+            logging.error(f"执行充值操作时出错：{str(e)}")
+    elif action.startswith("抽卡"):
+        try:
+            _, params = action.split("(")
+            params = params.rstrip(")").split(",")
+            user_name = params[0].strip()
+            times = int(params[1].strip())
+            user_id = get_user_id(user_name)
+            if  user_id is None:
+                return f"无法找到用户{user_name}"
+            logging.info(f"已对用户 {user_id} 执行抽卡操作，次数为 {times}")
+            result = asset_utils.user_lottery(user_id, times)
+            return result
+        except Exception as e:  
+            logging.error(f"执行抽卡操作时出错：{str(e)}")
     else:
         logging.warning(f"未知的动作：{action}")
 
 def replay_group(user_name, message, model='doubao'):
     return reply(user_name, message, model)
 
-def save_chat_memory(user_name, message):
+def save_chat_memory(user_name, message, max_words=50):
     """
     保存聊天记录
 
@@ -277,11 +337,13 @@ def save_chat_memory(user_name, message):
         else:
             # 移除其他CQ码
             cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
-    # 移除多余的空白字符
-    cleaned_message = re.sub(r'\s+', ' ', cleaned_message).strip()
+    cleaned_message = cleaned_message[:max_words]  # 限制字数
 
-    new_msg = f"{user_name}说：{cleaned_message}"
-    chat_memory.append({"role": "user", "content": new_msg})
+    if user_name==MINT_NAME:
+        chat_memory.append({"role": "system", "content": cleaned_message})
+    else:
+        new_msg = f"{user_name}说：{cleaned_message}"
+        chat_memory.append({"role": "user", "content": new_msg})
     chat_words = sum(len(i["content"]) for i in chat_memory)
     logging.info(f"Current memory : {chat_words}")
     while chat_words > MAX_WORDS:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
