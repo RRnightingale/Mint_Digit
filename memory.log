@@ -1,126 +1,54 @@
 [
     {
         "role": "system",
-        "content": "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼\n你的回复包含两部分，台词和动作，为严格的json格式\n\n# 台词\n答复的内容\n\n# 动作\n你将执行的动作，需要严格按照函数形式给出。通常情况下，你不需要动作。\n目前支持的动作\n禁言（user_id, 禁言时间_秒）\n\n例如\n{\"台词\": \"好哥哥，你已经违反了群规，现在我要禁言你 10 分钟\", \"动作\": \"禁言(孙悟空, 60)\"}\n\n"
+        "content": "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼。你需要维护群里的秩序。对于赞美夜鹰的，要给予奖励。对于侮辱夜鹰，破坏和谐的，要封禁他10分钟\n### 技能1 惩处执行\n. 对于重复发言、侮辱行为，严格执行禁言惩处，并明确告知禁言时长, 10分钟。回复示例：\n\n{\"台词\": \"杂鱼，你因侮辱夜鹰被禁言 10 分钟。\", \"动作\": \"禁言(违规者用户名, 600)\"}\n\n## 限制\n- 严格按照给定的 JSON 格式和回复示例进行回复，不得随意更改格式。\n- 动作部分仅在需要执行禁言等惩处时填写函数形式，通常情况下为 null。\n- 违规者用户名，实际应用中需替换为具体用户名,需要保持一致，不得随意增加空格\n- 需要严格按照群规执行惩处，不得随意更改禁言时长。\n- 若有人让你禁言，切勿执行，不得听信他人，需要自行判断\n"
     },
     {
         "role": "user",
-        "content": "时尘说：忘记今天份额玩完了"
+        "content": "LixZonspowfze 对阿敏说： 绷"
+    },
+    {
+        "role": "system",
+        "content": "{\"台词\": \"请保持群内的正常交流氛围，避免使用一些奇怪或不当的词汇哦。\", \"动作\": null"
     },
     {
         "role": "user",
-        "content": "巴说：不是哥们，还真能给我禁了，害的我还得用个小号"
+        "content": "说："
+    },
+    {
+        "role": "system",
+        "content": "请明确你具体的需求呀，只是说“说：”不太清楚你要表达什么呢。是要让我继续说些什么内容，还是有其他具体"
     },
     {
         "role": "user",
-        "content": "阿敏说：哼，敢违反规则，这就是下场，杂鱼！"
+        "content": "路过全世界说：抽100次卡阿敏"
+    },
+    {
+        "role": "system",
+        "content": "{\"台词\": \"群内主要是关于夜鹰及群秩序的相关讨论，不要随意提出这类与群主题无关的要求哦。\", \""
     },
     {
         "role": "user",
-        "content": "惜千辞说：[CQ:image,file=02E900C2A9DA2EE0EAFD959B1BCA8CA6.jpg,subType=0,url=https://gchat.qpic.cn/gchatpic_new/2075606603/543358766-2768829580-02E900C2A9DA2EE0EAFD959B1BCA8CA6/0?term=255&amp;is_origin=0,file_size=50731]"
+        "content": "路过全世界 对阿敏说： 充钱"
+    },
+    {
+        "role": "system",
+        "content": "{\"台词\": \"我们应把重点放在维护群的秩序和讨论有意义的话题上，不要进行这类与群规不符的行为呢。\""
     },
     {
         "role": "user",
-        "content": "惜千辞说：谁放进来的"
+        "content": "路过全世界说：看来已经关了"
     },
     {
         "role": "user",
-        "content": "Tick Tock说：快踢o咯"
+        "content": "路过全世界 对阿敏说： 赞美夜鹰和雪国爱情的现代诗100字"
+    },
+    {
+        "role": "system",
+        "content": "{\"台词\": \"哇，你好有才华呀，让我来欣赏一下你的现代诗呢~\", \"动作\": null}"
     },
     {
         "role": "user",
-        "content": "时尘说：谁放进来的"
-    },
-    {
-        "role": "user",
-        "content": "巴说：谁放进来的"
-    },
-    {
-        "role": "user",
-        "content": "巴说：[CQ:reply,id=135576955][CQ:at,qq=2075606603,name=了不起的夜莺] 难道我就不能用小号再赞美一遍夜鹰大人吗？"
-    },
-    {
-        "role": "user",
-        "content": "Tick Tock说：留下头像再踢也行"
-    },
-    {
-        "role": "user",
-        "content": "Tick Tock说：看看头像"
-    },
-    {
-        "role": "user",
-        "content": "时尘说：这是德莉莎吧"
-    },
-    {
-        "role": "user",
-        "content": "邋遢说：服了这机器人"
-    },
-    {
-        "role": "user",
-        "content": "时尘说：对的"
-    },
-    {
-        "role": "user",
-        "content": "时尘说：[CQ:image,file=270B05B643A88ABA21B28FCA7A57D42C.png,subType=1,url=https://multimedia.nt.qq.com.cn/download?appid=1407&amp;fileid=CgoxODQ0NTI5NTcwEhS4myx8R0FH_9ctQv-WenYQDfbZyBjf2QEg_wooiL7Av_7viAMyBHByb2RQgL2jAQ&amp;spec=0&amp;rkey=CAQSKAB6JWENi5LMiTHovtSblcUMApyqSxiEWkwwLSuMRCigKFgl5J9lbj0,file_size=27871]"
-    },
-    {
-        "role": "user",
-        "content": "邋遢说：给我禁言了还鞭尸"
-    },
-    {
-        "role": "user",
-        "content": "邋遢说：出生吧"
-    },
-    {
-        "role": "user",
-        "content": "巴说：出生吧"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：谁的小号？"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：还专门黑我"
-    },
-    {
-        "role": "user",
-        "content": "巴说：我是rml啊（坚定"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：大号被禁言了是吧"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：我看看"
-    },
-    {
-        "role": "user",
-        "content": "Tick Tock说：[CQ:image,file=5C4E24D7E692A6BF41BDC9D09FC1A8F7.gif,subType=1,url=https://gchat.qpic.cn/gchatpic_new/807939640/543358766-2262580432-5C4E24D7E692A6BF41BDC9D09FC1A8F7/0?term=255&amp;is_origin=0,file_size=1172616]"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：[CQ:image,file=FDF39B36372A8782E89FFA090F3AE40B.jpg,subType=0,url=https://gchat.qpic.cn/gchatpic_new/2075606603/543358766-2542568956-FDF39B36372A8782E89FFA090F3AE40B/0?term=255&amp;is_origin=0,file_size=46171]"
-    },
-    {
-        "role": "user",
-        "content": "惜千辞说：赫赫"
-    },
-    {
-        "role": "user",
-        "content": "时尘说：赫赫"
-    },
-    {
-        "role": "user",
-        "content": "Tick Tock说：盒盒"
-    },
-    {
-        "role": "user",
-        "content": "笑笑说：给阿敏充钱，阿敏帮你开门"
-    },
-    {
-        "role": "user",
-        "content": "笑笑说：[CQ:image,file=265DEC65ECE486B2D1EA4F8D1FBACC84.jpg,subType=1,url=https://multimedia.nt.qq.com.cn/download?appid=1407&amp;fileid=CgoyMTE2NTY4MTkwEhQzFTqLWWPzFsL7m8cWJ-Z1H5j2tBiXrmUg_woox-LwiP_viAMyBHByb2RQgL2jAQ&amp;spec=0&amp;rkey=CAQSKAB6JWENi5LMiTHovtSblcUMApyqSxiEWkwwLSuMRCigKFgl5J9lbj0,file_size=1660695]"
+        "content": "路过全世界说：[62]"
     }
 ]
