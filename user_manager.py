@@ -39,7 +39,7 @@ def add_user(user_id, aliases=None, reputation=0, note=''):
     :return: 添加结果信息
     """
     global users
-    user_id = clean_username(user_id)  # 清理用户 ID
+    user_id = user_id  # 清理用户 ID
     aliases = [clean_username(alias) for alias in (aliases or [])]  # 清理别名
 
     if user_id in users:
@@ -67,7 +67,7 @@ def add_user(user_id, aliases=None, reputation=0, note=''):
     logging.debug(f"用户 {user_id} 已添加")
     return f"用户 {user_id} 已添加"
 
-def update_reputation(user_id, change):
+def update_reputation(user_id, change:int) ->int:
     """
     更新用户声望
     :param user_id: 用户ID
@@ -75,14 +75,13 @@ def update_reputation(user_id, change):
     :return: 更新结果信息
     """
     global users
-    user_id = clean_username(user_id)  # 清理用户 ID
     if user_id in users:
         users[user_id]['reputation'] += change
         save_users()
-        return f"用户 {user_id} 的声望已更新为 {users[user_id]['reputation']}"
-    return f"用户 {user_id} 不存在"
+        return users[user_id]['reputation']
+    return 0
 
-def add_note(user_id, note):
+def update_note(user_id: str, note: str)->str:
     """
     添加用户备注
     :param user_id: 被备注的用户ID
@@ -108,21 +107,25 @@ def introduce_user(user_id):
         aliases = ', '.join(user['aliases']) if user['aliases'] else '无别名'
         reputation = user['reputation']
         note = user['note'] if user['note'] else '无备注'
-        return f"{user_id}，{aliases}，声望{reputation}{describe_reputation(reputation)}，{note}"
+        return f"{user_id}，{aliases}，声望{reputation}{describe_reputation(reputation)}，{note}\n"
     return f"用户 {user_id} 不存在"
 
-def search_user(name):
+def search_user(user_name):
     """
     根据用户名或别名搜索用户
     :param name: 用户名或别名
     :return: 匹配的用户ID，如果没找到则返回None
     """
     global users
-    cleaned_name = clean_username(name)  # 清理搜索名称
+    cleaned_name = clean_username(user_name)  # 清理搜索名称
     for user_id, user_info in users.items():
         if cleaned_name in user_info['aliases'] or cleaned_name == user_id:
             return user_id
-    return None
+        
+    # 如果没找到，则创建临时用户
+    user_id = add_temp_user(user_name)
+    logging.info(f"创建临时用户 {user_id} {user_name}")
+    return user_id
 
 def describe_reputation(reputation):
     """
@@ -141,5 +144,20 @@ def describe_reputation(reputation):
     else:
         return "尊敬"
 
+def add_temp_user(alias:str="", reputation=0, note=''):
+    """
+    添加临时用户
+    :param alias: 用户别名
+    :param reputation: 声望值
+    :param note: 评价
+    :return: 用户ID
+    """
+    global users
+    counter = 1
+    while f"未知用户{counter:04d}" in users:
+        counter += 1
+    user_id = f"未知用户{counter:04d}"
+    add_user(user_id, [alias], reputation, note)
+    return user_id
 # 初始化用户信息
 load_users()

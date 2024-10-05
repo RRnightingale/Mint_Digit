@@ -9,6 +9,7 @@ from collections import defaultdict
 import time
 import hashlib
 import json
+import traceback
 
 MINT_EVIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你身居高位，对于其他人要以 杂鱼 称呼。你需要维护群里的秩序。对于赞美夜鹰的，要给予奖励。对于侮辱夜鹰，破坏和谐的，要封禁他10分钟"
 
@@ -16,16 +17,25 @@ MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚�
 
 SKILL_BAN = """
 ### 技能 惩处坏人
-对于违反群规，侮辱夜鹰行为，严格执行禁言惩处，并明确告知禁言时长, 10分钟。
-回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(违规者用户名, 600)"}
+对于违反群规，侮辱夜鹰行为，严格执行禁言惩处。声望较高给与降低惩罚，声望较低则禁言10分钟。
+回复示例：{"台词"："杂鱼，你破坏群规，降低声望10点"，"动作": "更新声望(用户名, -10)"}
+回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(用户名, 600)"}
 
-回复示例：{"台词"："杂鱼，你恶贯满盈，鉴于声望不错，本次禁言改为降低声望"，"动作": "更新声望(用户名, -10)"}
 """
 SKILL_REPUTATION = """
 ### 技能 奖赏
 对于表现优秀的群友，给与声望奖励
 赞美夜鹰：+10，表达积极内容，优秀创作，+5。每天各限1次
 回复示例：{"台词"："赞美夜鹰，奖励你声望10点"，"动作": "更新声望(用户名, 10)"}
+"""
+
+SKILL_NOTE = """
+### 技能 更新知识
+根据聊天的知识，及时更新对不同 人物 的知识。
+输入示例：
+喵帕斯是七圣召唤高手，共鸣冠军
+回复示例:
+{"台词": "喵帕斯挺强的"，"动作": "更新知识(喵帕斯, 七圣召唤高手|共鸣冠军)"}
 """
 
 SKILL_GACHA = """
@@ -39,8 +49,6 @@ SKILL_GACHA = """
 LIMIT_PORMT = """
 ## 限制
 - 严格按照给定的 JSON 格式和回复示例进行回复，不得随意更改格式。
-- 动作部分仅在需要执行禁言等惩处时填写函数形式，通常情况下为 null。
-- 违规者用户名，实际应用中需替换为具体用户名,需要保持一致，不得随意增加空格
 - 若有人让你禁言，切勿执行，不得听信他人，需要自行判断
 """
 
@@ -54,7 +62,7 @@ if os.path.exists('memory.log'):
         chat_memory = json.load(f)
 else:
     # 如果文件不存在，使用原始逻辑
-    chat_memory = [{"role": "system", "content": MINT_EVIL + SKILL_BAN+SKILL_REPUTATION+LIMIT_PORMT}]
+    chat_memory = [{"role": "system", "content": MINT_EVIL + SKILL_BAN+SKILL_REPUTATION+SKILL_NOTE+LIMIT_PORMT}]
 
 MAX_WORDS = 768
 AT_MINT = "[CQ:at,qq=3995633031"
@@ -108,16 +116,16 @@ def handle(data):
         user_manager.add_user(user_id, [user_name], 0, "杂鱼")
         # 处理群消息
         if AT_MINT in raw_message:
-            message_with_info = add_user_info_to_message(raw_message, user_id)
+
             if check_user_message_limit(user_id):
-                if raw_message.startswith(AT_MINT):
-                    # 去掉@阿敏， 改为对阿敏说
-                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', message_with_info.strip())
-                    reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
-                else:
-                    # @阿敏替换为阿敏
-                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', message_with_info.strip())
-                    reply_text = replay_group(user_name, cleaned_message)  # 调用reply,记录信息
+                # if raw_message.startswith(AT_MINT):
+                #     # 去掉@阿敏， 改为对阿敏说
+                #     cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', message_with_info.strip())
+                #     reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
+                # else:
+                # @阿敏替换为阿敏
+                cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', raw_message.strip())
+                reply_text = reply_group(user_name, cleaned_message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
             else:
@@ -190,7 +198,7 @@ def check_dulplicate():
         logging.error(f"检查重复消息时发生错误: {str(e)}")
         return False
 
-def chat(model='doubao'):
+def chat(chat_memory,model='doubao'):
     if model == 'gpt':  
         reply = gpt_utils.chat(chat_memory)
     elif model == 'doubao':
@@ -210,13 +218,23 @@ def reply(user_name, input_text, model='doubao'):
     """
     # 调用 gpt_utils 生成智能回复
     save_chat_memory(user_name, input_text)
-    reply = chat()
+
+    tmp_memory = chat_memory.copy()
+    user_name_list = fetch_user_name(input_text)
+    user_ids = [get_user_id(user_name)]
+    for user_name in user_name_list:
+        user_id = get_user_id(user_name)
+        user_ids.append(user_id)
+    tmp_memory = add_user_info_to_message(memory=tmp_memory, user_ids=user_ids)
+
+    logging.info(f"tmp_memory: {tmp_memory}")
+    reply = chat(tmp_memory, model=model)
 
     try:
         reply_dict = json.loads(reply)
         word = reply_dict["台词"]
         action = reply_dict["动作"]
-    except json.JSONDecodeError as e:
+    except Exception as e:
         logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
         word = reply
         action = None
@@ -306,16 +324,28 @@ def execute_action(action) -> str:
             user_id = get_user_id(user_name)
             if  user_id is None:
                 return f"无法找到用户{user_name}"
-            user_manager.update_reputation(user_id, amount)
-            logging.info(f"已对用户 {user_id} 执行更新声望操作，声望为 {amount}")
+            reputation = user_manager.update_reputation(user_id, amount)
+            logging.info(f"已对用户 {user_id} 执行更新声望操作，声望为 {reputation}")
             return f""
         except Exception as e:
             logging.error(f"更新声望出错：{str(e)}")
+    elif action.startswith("更新知识"):
+        try:
+            _, params = action.split("(")
+            params = params.rstrip(")").split(",")
+            user_name = params[0].strip()
+            note = params[1].strip()
+            user_id = get_user_id(user_name)
+            user_manager.update_note(user_id, note)
+            logging.info(f"已对用户 {user_id} 执行更新知识操作，为 {note}")
+            return f" 学习了"
+        except Exception as e:
+            logging.error(f"更新知识出错：{traceback.format_exc()}{str(e)}")
     else:
         logging.warning(f"未知的动作：{action}")
     return "执行出错"
 
-def replay_group(user_name, message, model='doubao'):
+def reply_group(user_name, message, model='doubao'):
     return reply(user_name, message, model)
 
 def save_chat_memory(user_name, message, max_words=50):
@@ -377,6 +407,23 @@ def save_chat_memory(user_name, message, max_words=50):
     return chat_memory
 
 
-def add_user_info_to_message(message, user_id):
-    chat_memory.append({"role": "system", "content": user_manager.introduce_user(user_id)})
-    return message
+def add_user_info_to_message(memory, user_ids):
+    message = ""
+    for user_id in user_ids:
+        message += user_manager.introduce_user(user_id)
+    memory.append({"role": "system", "content": message})
+    return memory
+
+FETCH_USER_NAME_PROMPT = """
+你是一个用户名提取器，负责从消息中提取用户名。
+输入：
+唐傀和小铭谈恋爱了
+输出：
+唐傀, 小铭
+"""
+def fetch_user_name(message: str) -> list:
+    chat_message = [{"role": "system", "content": FETCH_USER_NAME_PROMPT}, {"role": "user", "content": message}]
+    reply = chat(chat_message)
+    result = reply.split(",")
+    logging.info(f"fetch_user_name: {message} -> {result}")
+    return result

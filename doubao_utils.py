@@ -14,7 +14,8 @@ API_KEY = os.getenv("DOUBAO_API_KEY")  # 从 .env 文件中获取 DOUBAO_API_KEY
 # model_name = "ep-20241001234826-5m4j9"  # 32lite
 # model_name = 'ep-20241002215521-dnr7t'  # 128 pro
 # model_name = "ep-20241003070234-2c94h" # 128lite
-model_name = "ep-20241004185827-ckr55" # char-4k
+# model_name = "ep-20241004185827-ckr55" # char-4k
+model_name = "ep-20241005200634-r9dzn" # pro32
 
 def chat(messages: list):
     headers = {
