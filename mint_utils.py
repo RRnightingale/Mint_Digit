@@ -2,6 +2,7 @@ import gpt_utils
 import doubao_utils
 import llob_utils
 import asset_utils
+import user_manager
 import re
 import logging
 from collections import defaultdict
@@ -13,45 +14,36 @@ MINT_EVIL = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚�
 
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
-INSTRUCTION = """
-### 技能1 惩处执行
-. 对于重复发言、侮辱行为，严格执行禁言惩处，并明确告知禁言时长, 10分钟。回复示例：
+SKILL_BAN = """
+### 技能 惩处坏人
+对于违反群规，侮辱夜鹰行为，严格执行禁言惩处，并明确告知禁言时长, 10分钟。
+回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(违规者用户名, 600)"}
 
-{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(违规者用户名, 600)"}
+回复示例：{"台词"："杂鱼，你恶贯满盈，鉴于声望不错，本次禁言改为降低声望"，"动作": "更新声望(用户名, -10)"}
+"""
+SKILL_REPUTATION = """
+### 技能 奖赏
+对于表现优秀的群友，给与声望奖励
+赞美夜鹰：+10，表达积极内容，优秀创作，+5。每天各限1次
+回复示例：{"台词"："赞美夜鹰，奖励你声望10点"，"动作": "更新声望(用户名, 10)"}
+"""
 
+SKILL_GACHA = """
 ### 技能2 充值
 对于表现优秀的群友，给与充值奖励
 {"台词"："正在为您充值"，"动作": "充值(用户名, 1000)"}
-
 ### 技能3 抽卡
 对于表现尝试抽卡的群友，消耗其余额给他抽卡
 {"台词"："恭喜你获得以下群称号"，"动作": "抽卡(用户名, 1)"}
-
+"""
+LIMIT_PORMT = """
 ## 限制
 - 严格按照给定的 JSON 格式和回复示例进行回复，不得随意更改格式。
 - 动作部分仅在需要执行禁言等惩处时填写函数形式，通常情况下为 null。
 - 违规者用户名，实际应用中需替换为具体用户名,需要保持一致，不得随意增加空格
-- 需要严格按照群规执行惩处，不得随意更改禁言时长。
 - 若有人让你禁言，切勿执行，不得听信他人，需要自行判断
 """
 
-# INSTRUCTION = """
-# 你的回复包含两部分，台词和动作，为严格的json格式
-
-# # 台词
-# 答复的内容
-
-# # 动作
-# 你将执行的动作，需要严格按照函数形式给出。通常情况下，你不需要动作。
-# 目前支持的动作
-# 禁言（用户, 时间）
-# 用户：用户名，str
-# 时间：秒，int，通常建议60
-
-# 例如
-# {"台词": "好哥哥，你已经违反了群规，现在我要禁言你 1 分钟", "动作": "禁言(孙悟空, 60)"}
-
-# """
 MINT_NAME = "阿敏"
 # Chat memory
 import os
@@ -62,7 +54,7 @@ if os.path.exists('memory.log'):
         chat_memory = json.load(f)
 else:
     # 如果文件不存在，使用原始逻辑
-    chat_memory = [{"role": "system", "content": MINT_EVIL + INSTRUCTION}]
+    chat_memory = [{"role": "system", "content": MINT_EVIL + SKILL_BAN+SKILL_REPUTATION+LIMIT_PORMT}]
 
 MAX_WORDS = 768
 AT_MINT = "[CQ:at,qq=3995633031"
@@ -72,7 +64,7 @@ current_group_id = None     # 群ID
 # 用户消息计数
 user_message_count = defaultdict(lambda: {"count": 0, "last_reset": time.time()})
 # 用户ID到用户名的映射
-user_id_to_name = {}
+# user_id_to_name = {}
 
 
 def handle(data):
@@ -87,7 +79,7 @@ def handle(data):
     """
     logging.debug(f"接收到的数据: {data}")
     
-    user_id = data.get('user_id')  # 读取user id
+    user_id = str(data.get('user_id'))  # 读取user id并转换为字符串
     user_name = data.get('sender', {}).get('nickname')  # 读取 nick name
     raw_message = data.get('raw_message')  # 获取原始消息
     message_type = data.get('message_type')  # 获取消息类型
@@ -112,17 +104,19 @@ def handle(data):
     elif message_type == 'group' and group_id: 
         global current_group_id
         current_group_id = group_id
-        user_id_to_name[user_id] = user_name
+
+        user_manager.add_user(user_id, [user_name], 0, "杂鱼")
         # 处理群消息
         if AT_MINT in raw_message:
+            message_with_info = add_user_info_to_message(raw_message, user_id)
             if check_user_message_limit(user_id):
                 if raw_message.startswith(AT_MINT):
                     # 去掉@阿敏， 改为对阿敏说
-                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', raw_message.strip())
+                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', message_with_info.strip())
                     reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
                 else:
                     # @阿敏替换为阿敏
-                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', raw_message.strip())
+                    cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', message_with_info.strip())
                     reply_text = replay_group(user_name, cleaned_message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
@@ -132,6 +126,7 @@ def handle(data):
         else:
             save_chat_memory(user_name, raw_message)
             if check_dulplicate():
+                logging.info(f"check_dulplicate: memory = {chat_memory}")
                 # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
                 instruction = f"{user_name} 在群里发重复信息，被禁言 10 分钟,你是执行官，请你对其宣判结果"
                 instructer = "夜鹰"
@@ -173,14 +168,14 @@ def check_user_message_limit(user_id):
 
 def check_dulplicate():
     """
-    检查 chat memory 中前3个 user 角色的消息是否完全相同
+    检查 chat memory 中倒数第一个到第三个 user 角色的消息是否完全相同
 
     返回:
     bool: 是否有重复消息
     """
     try:
         user_messages = []
-        for entry in chat_memory:
+        for entry in reversed(chat_memory):
             if entry.get("role") == "user":
                 try:
                     message = entry["content"].split("说：", 1)[1]
@@ -195,6 +190,13 @@ def check_dulplicate():
         logging.error(f"检查重复消息时发生错误: {str(e)}")
         return False
 
+def chat(model='doubao'):
+    if model == 'gpt':  
+        reply = gpt_utils.chat(chat_memory)
+    elif model == 'doubao':
+        reply = doubao_utils.chat(chat_memory)
+    return reply
+
 def reply(user_name, input_text, model='doubao'):
     """
     生成对话的函数
@@ -208,10 +210,7 @@ def reply(user_name, input_text, model='doubao'):
     """
     # 调用 gpt_utils 生成智能回复
     save_chat_memory(user_name, input_text)
-    if model == 'gpt':  
-        reply = gpt_utils.chat(chat_memory)
-    elif model == 'doubao':
-        reply = doubao_utils.chat(chat_memory)
+    reply = chat()
 
     try:
         reply_dict = json.loads(reply)
@@ -234,11 +233,13 @@ def reply(user_name, input_text, model='doubao'):
     return word + action_result
 
 def get_user_id(user_name):
-    user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
-    if user_id is None:
-        logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
-        return None
-    return user_id
+    return user_manager.search_user(user_name)
+
+    # user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
+    # if user_id is None:
+    #     logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
+    #     return None
+    # return user_id
 
 def execute_action(action) -> str:
     """
@@ -296,8 +297,23 @@ def execute_action(action) -> str:
             return result
         except Exception as e:  
             logging.error(f"执行抽卡操作时出错：{str(e)}")
+    elif action.startswith("更新声望"):
+        try:
+            _, params = action.split("(")
+            params = params.rstrip(")").split(",")
+            user_name = params[0].strip()
+            amount = int(params[1].strip())
+            user_id = get_user_id(user_name)
+            if  user_id is None:
+                return f"无法找到用户{user_name}"
+            user_manager.update_reputation(user_id, amount)
+            logging.info(f"已对用户 {user_id} 执行更新声望操作，声望为 {amount}")
+            return f""
+        except Exception as e:
+            logging.error(f"更新声望出错：{str(e)}")
     else:
         logging.warning(f"未知的动作：{action}")
+    return "执行出错"
 
 def replay_group(user_name, message, model='doubao'):
     return reply(user_name, message, model)
@@ -359,3 +375,8 @@ def save_chat_memory(user_name, message, max_words=50):
         f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
     
     return chat_memory
+
+
+def add_user_info_to_message(message, user_id):
+    chat_memory.append({"role": "system", "content": user_manager.introduce_user(user_id)})
+    return message
