@@ -107,7 +107,7 @@ def introduce_user(user_id):
         aliases = ', '.join(user['aliases']) if user['aliases'] else '无别名'
         reputation = user['reputation']
         note = user['note'] if user['note'] else '无备注'
-        return f"{user_id}，{aliases}，声望{reputation}{describe_reputation(reputation)}，{note}\n"
+        return f"用户{user_id}，别名 {aliases}，声望{reputation}{describe_reputation(reputation)}，{note}\n"
     return f"用户 {user_id} 不存在"
 
 def search_user(user_name):
@@ -133,12 +133,12 @@ def describe_reputation(reputation):
     :param reputation: 声望值
     :return: 描述信息字符串
     """
-    if reputation < 0:
+    if reputation < -100:
         return "恶徒"
     elif reputation < 100:
         return "杂鱼"
     elif reputation < 1000:
-        return "冷淡"
+        return "普通"
     elif reputation < 10000:
         return "友善"
     else:
@@ -159,5 +159,6 @@ def add_temp_user(alias:str="", reputation=0, note=''):
     user_id = f"未知用户{counter:04d}"
     add_user(user_id, [alias], reputation, note)
     return user_id
+
 # 初始化用户信息
 load_users()

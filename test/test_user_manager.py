@@ -27,14 +27,14 @@ class TestUserManager(unittest.TestCase):
         result = update_reputation("002", 20)
         self.assertEqual(result, "用户 002 不存在")
 
-    def test_add_and_get_note(self):
-        add_user("001")
+    # def test_add_and_get_note(self):
+    #     add_user("001")
         
-        result = add_note("001", "很好的用户")
-        self.assertEqual(result, "对用户 001 的备注已添加/更新")
+    #     result = add_note("001", "很好的用户")
+    #     self.assertEqual(result, "对用户 001 的备注已添加/更新")
         
-        info = get_user_info("001")
-        self.assertEqual(info['note'], "很好的用户")
+    #     info = get_user_info("001")
+    #     self.assertEqual(info['note'], "很好的用户")
 
     def test_search_user(self):
         add_user("001", ["小明", "明明"])

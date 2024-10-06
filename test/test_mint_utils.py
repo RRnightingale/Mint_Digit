@@ -52,5 +52,15 @@ class TestMintUtils(unittest.TestCase):
             mint_utils.execute_action(action)
             mock_logging_warning.assert_called_once_with("未知的动作：未知动作(测试用户, 60)")
 
+    def test_fetch_user_name(self):
+        message = "喵帕斯是七圣召唤高手，共鸣冠军"
+        result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
+        self.assertIn("喵帕斯", result)  # 检查 "喵帕斯" 是否在 result 列表中
+
+        message = "介绍唐傀"
+        result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
+        self.assertIn("唐傀", result)  # 
+
+
 if __name__ == '__main__':
     unittest.main()
