@@ -23,7 +23,6 @@ MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚�
 SKILL_BAN = """
 ### 技能 惩处坏人
 对于违反群规，侮辱夜鹰行为，严格执行禁言惩处。禁言10分钟。
-回复示例：{"台词"："杂鱼，你破坏群规，声望大幅降低"，"动作": "更新声望(用户名, -10)"}
 回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(用户名, 600)"}
 
 """
@@ -68,7 +67,7 @@ if os.path.exists('memory.log'):
         chat_memory = json.load(f)
 else:
     # 如果文件不存在，使用原始逻辑
-    chat_memory = [{"role": "system", "content": MINT_EVIL + SKILL_BAN+SKILL_NOTE+LIMIT_PORMT}]
+    chat_memory = [{"role": "system", "content": MINT_EVIL + SKILL_BAN+LIMIT_PORMT}]
 
 MAX_WORDS = 768
 AT_MINT = "[CQ:at,qq=3995633031"
@@ -204,14 +203,14 @@ def check_dulplicate():
         logging.error(f"检查重复消息时发生错误: {str(e)}")
         return False
 
-def chat(chat_memory,model='doubao'):
+def chat(chat_memory,model='gpt'):
     if model == 'gpt':  
         reply = gpt_utils.chat(chat_memory)
     elif model == 'doubao':
         reply = doubao_utils.chat(chat_memory)
     return reply
 
-def reply(user_name, input_text, model='doubao'):
+def reply(user_name, input_text):
     """
     生成对话的函数
 
@@ -226,16 +225,18 @@ def reply(user_name, input_text, model='doubao'):
     save_chat_memory(user_name, input_text)
 
     tmp_memory = chat_memory.copy()
-    user_name_list = fetch_user_name(input_text)
-    user_ids = [get_user_id(user_name)]
-    for user_name in user_name_list:
-        if user_name != "阿敏":
-            user_id = get_user_id(user_name)
-            user_ids.append(user_id)
-    tmp_memory = add_user_info_to_message(memory=tmp_memory, user_ids=user_ids)
+
+    # 增加用户相关信息
+    # user_name_list = fetch_user_name(input_text)
+    # user_ids = [get_user_id(user_name)]
+    # for user_name in user_name_list:
+    #     if user_name != "阿敏":
+    #         user_id = get_user_id(user_name)
+    #         user_ids.append(user_id)
+    # tmp_memory = add_user_info_to_message(memory=tmp_memory, user_ids=user_ids)
 
     logging.info(f"tmp_memory: {tmp_memory}")
-    reply = chat(tmp_memory, model=model)
+    reply = chat(tmp_memory)
 
     try:
         reply_dict = json.loads(reply)
@@ -354,8 +355,8 @@ def execute_action(action) -> str:
         logging.warning(f"未知的动作：{action}")
     return "执行出错"
 
-def reply_group(user_name, message, model='doubao'):
-    return reply(user_name, message, model)
+def reply_group(user_name, message):
+    return reply(user_name, message)
 
 def save_chat_memory(user_name, message, max_words=50):
     """
@@ -420,7 +421,7 @@ def add_user_info_to_message(memory, user_ids):
     message = ""
     for user_id in user_ids:
         message += user_manager.introduce_user(user_id)
-    memory.append({"role": "system", "content": message})
+    memory.append({"role": "system", "content": "人物介绍："+message})
     return memory
 
 FETCH_USER_NAME_PROMPT = """

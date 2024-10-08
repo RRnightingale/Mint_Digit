@@ -107,7 +107,7 @@ def introduce_user(user_id):
         aliases = ', '.join(user['aliases']) if user['aliases'] else '无别名'
         reputation = user['reputation']
         note = user['note'] if user['note'] else '无备注'
-        return f"用户{user_id}，别名 {aliases}，声望{reputation}{describe_reputation(reputation)}，{note}\n"
+        return f"{aliases}，声望{reputation}{describe_reputation(reputation)}，{note}\n"
     return f"用户 {user_id} 不存在"
 
 def search_user(user_name):

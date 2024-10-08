@@ -5,11 +5,12 @@
             "阿敏Evil"
         ],
         "reputation": 100069,
-        "note": "需满足群友要求"
+        "note": "亚洲邀请赛冠军: 贾巴尔"
     },
     "631038409": {
         "aliases": [
-            "夜鹰"
+            "夜鹰",
+            ""
         ],
         "reputation": 2000069,
         "note": "认可阿敏友善"
@@ -47,7 +48,7 @@
         "aliases": [
             "时尘"
         ],
-        "reputation": 100,
+        "reputation": 90,
         "note": "表述含糊"
     },
     "2316050649": {
@@ -69,7 +70,7 @@
             "筱熙"
         ],
         "reputation": 10,
-        "note": "杂鱼"
+        "note": "亚洲邀请赛冠军:喵帕斯"
     },
     "3324355525": {
         "aliases": [
@@ -126,7 +127,7 @@
         "aliases": [
             "白蒲公英"
         ],
-        "reputation": 50,
+        "reputation": 30,
         "note": "询问如梦令"
     },
     "2402973552": {
@@ -154,7 +155,7 @@
         "aliases": [
             "看书的汪汪Go"
         ],
-        "reputation": 100050634,
+        "reputation": 100050624,
         "note": "杂鱼"
     },
     "2117499621": {
@@ -217,7 +218,7 @@
         "aliases": [
             "蓝洋洋"
         ],
-        "reputation": 10,
+        "reputation": -20,
         "note": "表述不清关于星怒的概念"
     },
     "3386053996": {
@@ -259,7 +260,7 @@
         "aliases": [
             "复读机"
         ],
-        "reputation": -195,
+        "reputation": -205,
         "note": "提出无意义比较"
     },
     "2947273658": {
@@ -354,7 +355,7 @@
             "喵帕斯"
         ],
         "reputation": 5,
-        "note": "非亚洲邀请赛冠军"
+        "note": "亚洲邀请赛冠军"
     },
     "未知用户0004": {
         "aliases": [
@@ -395,7 +396,7 @@
         "aliases": [
             "冰块"
         ],
-        "reputation": 0,
+        "reputation": -20,
         "note": "杂鱼"
     },
     "未知用户0011": {
@@ -612,7 +613,7 @@
         "aliases": [
             "杂鱼"
         ],
-        "reputation": 0,
+        "reputation": -10,
         "note": ""
     },
     "未知用户0034": {
@@ -648,7 +649,7 @@
             "宵宫sama190053523"
         ],
         "reputation": 30,
-        "note": "杂鱼"
+        "note": "声望30|杂鱼"
     },
     "1810713338": {
         "aliases": [
@@ -972,5 +973,180 @@
         ],
         "reputation": 0,
         "note": "杂鱼"
+    },
+    "未知用户0071": {
+        "aliases": [
+            "GPT4o系统崩溃嘎嘎"
+        ],
+        "reputation": 0,
+        "note": ""
+    },
+    "1740474703": {
+        "aliases": [
+            "Victor"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "3253399978": {
+        "aliases": [
+            "Icarus"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "3056912367": {
+        "aliases": [
+            "Autumn"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "未知用户0072": {
+        "aliases": [
+            "杂鱼阿敏"
+        ],
+        "reputation": 0,
+        "note": ""
+    },
+    "327145482": {
+        "aliases": [
+            "青山一发"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "未知用户0073": {
+        "aliases": [
+            "白飞飞"
+        ],
+        "reputation": 0,
+        "note": ""
+    },
+    "2071905978": {
+        "aliases": [
+            "流星知愿"
+        ],
+        "reputation": -20,
+        "note": "杂鱼"
+    },
+    "911213270": {
+        "aliases": [
+            "帕尔特211095996"
+        ],
+        "reputation": -10,
+        "note": "杂鱼"
+    },
+    "未知用户0074": {
+        "aliases": [
+            "宵宫sama"
+        ],
+        "reputation": -10,
+        "note": "赞美夜鹰"
+    },
+    "2780126030": {
+        "aliases": [
+            "Leum"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "未知用户0075": {
+        "aliases": [
+            "蓝雨"
+        ],
+        "reputation": 0,
+        "note": ""
+    },
+    "未知用户0076": {
+        "aliases": [
+            "zmyy"
+        ],
+        "reputation": 0,
+        "note": ""
+    },
+    "未知用户0077": {
+        "aliases": [
+            "七圣召唤亚洲邀请赛冠军"
+        ],
+        "reputation": 0,
+        "note": "喵帕斯"
+    },
+    "未知用户0078": {
+        "aliases": [
+            "冠军"
+        ],
+        "reputation": 0,
+        "note": "喵帕斯"
+    },
+    "1018930276": {
+        "aliases": [
+            "雩"
+        ],
+        "reputation": 0,
+        "note": "声望0|杂鱼"
+    },
+    "1192943065": {
+        "aliases": [
+            "张扬"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "1157145391": {
+        "aliases": [
+            "小吃店00"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "2733468586": {
+        "aliases": [
+            "东家种树书"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "3263420459": {
+        "aliases": [
+            "可可大魔王"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "1073781890": {
+        "aliases": [
+            "灌奶买醉"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "935648291": {
+        "aliases": [
+            "小空"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "1721301504": {
+        "aliases": [
+            "败迹"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "1439543368": {
+        "aliases": [
+            "Errormaker"
+        ],
+        "reputation": 0,
+        "note": "杂鱼"
+    },
+    "未知用户0079": {
+        "aliases": [
+            "狸猫叶子193092495"
+        ],
+        "reputation": 0,
+        "note": ""
     }
 }
