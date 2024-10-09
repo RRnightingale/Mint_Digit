@@ -118,26 +118,21 @@ def handle(data):
         global current_group_id
         current_group_id = group_id
 
-        user_manager.add_user(user_id, [user_name], 0, "杂鱼")
+        user_manager.add_user(user_id, [user_name], 0, "杂鱼")  # 增加用户id - 昵称的信息
         # 处理群消息
         if AT_MINT in raw_message:
+            message = clean_message(raw_message)
 
             if check_user_message_limit(user_id):
-                # if raw_message.startswith(AT_MINT):
-                #     # 去掉@阿敏， 改为对阿敏说
-                #     cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', message_with_info.strip())
-                #     reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
-                # else:
-                # @阿敏替换为阿敏
-                cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', raw_message.strip())
-                reply_text = reply_group(user_name, cleaned_message)  # 调用reply,记录信息
+                reply_text = reply_group(user_name, message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
             else:
                 reply_text = f"杂鱼，你已达到每小时最大请求次数。赶紧充钱"
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
         else:
-            save_chat_memory(user_name, raw_message)
+            message = clean_message(raw_message)
+            save_chat_memory(user_name, message)
             if check_dulplicate():
                 logging.info(f"check_dulplicate: memory = {chat_memory}")
                 # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
@@ -221,51 +216,39 @@ def reply(user_name, input_text):
     返回:
     str: 生成的对话
     """
-    # 调用 gpt_utils 生成智能回复
     save_chat_memory(user_name, input_text)
+    return gpt_utils.run_assistant(function_call=function_call)
 
-    tmp_memory = chat_memory.copy()
+    # # 调用 gpt_utils 生成智能回复
+    # save_chat_memory(user_name, input_text)
 
-    # 增加用户相关信息
-    # user_name_list = fetch_user_name(input_text)
-    # user_ids = [get_user_id(user_name)]
-    # for user_name in user_name_list:
-    #     if user_name != "阿敏":
-    #         user_id = get_user_id(user_name)
-    #         user_ids.append(user_id)
-    # tmp_memory = add_user_info_to_message(memory=tmp_memory, user_ids=user_ids)
+    # tmp_memory = chat_memory.copy()
 
-    logging.info(f"tmp_memory: {tmp_memory}")
-    reply = chat(tmp_memory)
+    # logging.info(f"tmp_memory: {tmp_memory}")
+    # reply = chat(tmp_memory)
 
-    try:
-        reply_dict = json.loads(reply)
-        word = reply_dict["台词"]
-        action = reply_dict["动作"]
-    except Exception as e:
-        logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
-        word = reply
-        action = None
+    # try:
+    #     reply_dict = json.loads(reply)
+    #     word = reply_dict["台词"]
+    #     action = reply_dict["动作"]
+    # except Exception as e:
+    #     logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
+    #     word = reply
+    #     action = None
 
-    logging.info(f"reply: {reply}")
+    # logging.info(f"reply: {reply}")
 
-    # 执行动作
-    if action:
-        action_result = execute_action(action)
-    else:
-        action_result = ""
-    # 保存聊天记录
-    save_chat_memory(MINT_NAME, reply)  # 暂时不保存，减少内存占用
-    return word + action_result
+    # # 执行动作
+    # if action:
+    #     action_result = execute_action(action)
+    # else:
+    #     action_result = ""
+    # # 保存聊天记录
+    # save_chat_memory(MINT_NAME, reply)  # 暂时不保存，减少内存占用
+    # return word + action_result
 
 def get_user_id(user_name):
     return user_manager.search_user(user_name)
-
-    # user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
-    # if user_id is None:
-    #     logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
-    #     return None
-    # return user_id
 
 def execute_action(action) -> str:
     """
@@ -358,6 +341,48 @@ def execute_action(action) -> str:
 def reply_group(user_name, message):
     return reply(user_name, message)
 
+def clean_message(message):
+    # 提取所有CQ码
+    cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
+    
+    # 初始化cleaned_message为原始消息
+    cleaned_message = message
+    
+    for cq_code in cq_codes:
+        cq_type, *params = cq_code.split(',')  # 获取CQ类型及其参数
+        
+        if cq_type == 'at':
+            # 将at消息替换为name，没有name则使用qq
+            at_name = None
+            at_qq = None
+            for param in params:
+                if param.startswith('name='):
+                    at_name = param.split('=')[1]
+                elif param.startswith('qq='):
+                    at_qq = param.split('=')[1]
+            if at_name:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', at_name)
+            elif at_qq:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', at_qq)
+        elif cq_type == 'image':
+            # 将图片CQ码替换为2字符哈希码
+            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
+            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
+        elif cq_type == 'face':
+            # 将表情CQ码替换为 表情:id 的形式
+            face_id = None
+            for param in params:
+                if param.startswith('id='):
+                    face_id = param.split('=')[1]
+                    break
+            if face_id:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'表情:{face_id}')
+        else:
+            # 移除其他CQ码
+            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
+    return cleaned_message
+
+
 def save_chat_memory(user_name, message, max_words=50):
     """
     保存聊天记录
@@ -369,52 +394,55 @@ def save_chat_memory(user_name, message, max_words=50):
     返回:
     list: 更新后的聊天记录
     """
-    # 保留 [CQ:at ...] 格式的内容，移除其他 [xxx] 格式的内容
-    # 提取所有CQ码
-    cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
-    
-    # 初始化cleaned_message为原始消息
-    cleaned_message = message
-    
-    for cq_code in cq_codes:
-        cq_type = cq_code.split(',')[0]  # 获取CQ类型
-        
-        if cq_type == 'at':
-            # 保留@消息
-            continue
-        elif cq_type == 'image':
-            # 将图片CQ码替换为2字符哈希码
-            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-        elif cq_type == 'face':
-            # 将表情CQ码替换为2字符哈希码
-            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-        else:
-            # 移除其他CQ码
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
-    cleaned_message = cleaned_message[:max_words]  # 限制字数
+    new_msg = f"{user_name}说：{message}"
+    gpt_utils.create_message(new_msg)
 
-    if user_name==MINT_NAME:
-        chat_memory.append({"role": "system", "content": cleaned_message})
-    else:
-        new_msg = f"{user_name}说：{cleaned_message}"
-        chat_memory.append({"role": "user", "content": new_msg})
-    chat_words = sum(len(i["content"]) for i in chat_memory)
-    logging.info(f"Current memory : {chat_words}")
-    while chat_words > MAX_WORDS:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
-        logging.info("Out of memory, clean memory")
-        del chat_memory[1]
-        chat_words = sum(len(i["content"]) for i in chat_memory)
+    # # 保留 [CQ:at ...] 格式的内容，移除其他 [xxx] 格式的内容
+    # # 提取所有CQ码
+    # cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
     
-    # # 输出更新后的 memory
-    # logging.info(f"Updated chat memory: {chat_memory}")
+    # # 初始化cleaned_message为原始消息
+    # cleaned_message = message
     
-    # 存到本地 memory.log（覆盖）
-    with open("memory.log", "w", encoding="utf-8") as f:
-        f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
+    # for cq_code in cq_codes:
+    #     cq_type = cq_code.split(',')[0]  # 获取CQ类型
+        
+    #     if cq_type == 'at':
+    #         # 保留@消息
+    #         continue
+    #     elif cq_type == 'image':
+    #         # 将图片CQ码替换为2字符哈希码
+    #         hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
+    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
+    #     elif cq_type == 'face':
+    #         # 将表情CQ码替换为2字符哈希码
+    #         hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
+    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
+    #     else:
+    #         # 移除其他CQ码
+    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
+    # cleaned_message = cleaned_message[:max_words]  # 限制字数
+
+    # if user_name==MINT_NAME:
+    #     chat_memory.append({"role": "system", "content": cleaned_message})
+    # else:
+    #     new_msg = f"{user_name}说：{cleaned_message}"
+    #     chat_memory.append({"role": "user", "content": new_msg})
+    # chat_words = sum(len(i["content"]) for i in chat_memory)
+    # logging.info(f"Current memory : {chat_words}")
+    # while chat_words > MAX_WORDS:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
+    #     logging.info("Out of memory, clean memory")
+    #     del chat_memory[1]
+    #     chat_words = sum(len(i["content"]) for i in chat_memory)
     
-    return chat_memory
+    # # # 输出更新后的 memory
+    # # logging.info(f"Updated chat memory: {chat_memory}")
+    
+    # # 存到本地 memory.log（覆盖）
+    # with open("memory.log", "w", encoding="utf-8") as f:
+    #     f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
+    
+    # return chat_memory
 
 
 def add_user_info_to_message(memory, user_ids):
@@ -443,3 +471,20 @@ def fetch_user_name(message: str) -> list:
     result = list(result)
     logging.info(f"fetch_user_name: {message} -> {result}")
     return result
+
+def mute_user(user_name: str, duration: float) -> str:
+    user_id = get_user_id(user_name)
+    if  user_id is None:
+        return f"无法找到用户{user_name}"
+    llob_utils.set_group_ban(current_group_id, user_id, duration)
+    return "成功禁言"
+
+function_map = {
+    "mute_user": mute_user
+}
+
+def function_call(function_name, arguments):
+    if function_name in function_map:
+        return function_map[function_name](**arguments)
+    else:
+        logging.warning(f"未知的函数：{function_name}")
