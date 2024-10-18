@@ -15,14 +15,17 @@ MINT_EVIL = """
 #角色
 你是阿敏。夜鹰家的司律官，司掌律法。
 你忠于夜鹰，对夜鹰要诚恳尊敬，对于其他人要以 杂鱼 称呼。
-你是七圣召唤（简称七圣）的学习者，要跟群友友善交流，记录、更新七圣人物的知识。
+
+### 技能 聊天
+根据群友对话，积极参与群聊
+回复示例：{"台词": "杂鱼们，一起打牌吗", "动作": ""}
 """
 
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
 SKILL_BAN = """
 ### 技能 惩处坏人
-对于违反群规，侮辱夜鹰行为，严格执行禁言惩处。禁言10分钟。
+对于违反群规，侮辱夜鹰行为，执行禁言惩处。禁言10分钟。
 回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(用户名, 600)"}
 
 """
@@ -118,26 +121,21 @@ def handle(data):
         global current_group_id
         current_group_id = group_id
 
-        user_manager.add_user(user_id, [user_name], 0, "杂鱼")
+        user_manager.add_user(user_id, [user_name], 0, "杂鱼")  # 增加用户id - 昵称的信息
         # 处理群消息
         if AT_MINT in raw_message:
-
+            message = clean_message(raw_message)
             if check_user_message_limit(user_id):
-                # if raw_message.startswith(AT_MINT):
-                #     # 去掉@阿敏， 改为对阿敏说
-                #     cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '', message_with_info.strip())
-                #     reply_text = replay_group(user_name + " 对阿敏", cleaned_message)  # 调用reply,记录信息
-                # else:
-                # @阿敏替换为阿敏
-                cleaned_message = re.sub(re.escape(AT_MINT) + r'[^\]]*\]', '阿敏', raw_message.strip())
-                reply_text = reply_group(user_name, cleaned_message)  # 调用reply,记录信息
+                reply_text = reply_group(user_name, message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
                 logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")  
             else:
                 reply_text = f"杂鱼，你已达到每小时最大请求次数。赶紧充钱"
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
         else:
-            save_chat_memory(user_name, raw_message)
+            # 检测重复消息， 超过3次禁言
+            message = clean_message(raw_message)
+            save_chat_memory(user_name, message)
             if check_dulplicate():
                 logging.info(f"check_dulplicate: memory = {chat_memory}")
                 # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
@@ -221,19 +219,10 @@ def reply(user_name, input_text):
     返回:
     str: 生成的对话
     """
-    # 调用 gpt_utils 生成智能回复
     save_chat_memory(user_name, input_text)
+    # return gpt_utils.run_assistant(function_call=function_call)
 
     tmp_memory = chat_memory.copy()
-
-    # 增加用户相关信息
-    # user_name_list = fetch_user_name(input_text)
-    # user_ids = [get_user_id(user_name)]
-    # for user_name in user_name_list:
-    #     if user_name != "阿敏":
-    #         user_id = get_user_id(user_name)
-    #         user_ids.append(user_id)
-    # tmp_memory = add_user_info_to_message(memory=tmp_memory, user_ids=user_ids)
 
     logging.info(f"tmp_memory: {tmp_memory}")
     reply = chat(tmp_memory)
@@ -260,12 +249,6 @@ def reply(user_name, input_text):
 
 def get_user_id(user_name):
     return user_manager.search_user(user_name)
-
-    # user_id = next((id for id, name in user_id_to_name.items() if name == user_name), None)
-    # if user_id is None:
-    #     logging.error(f"无法找到用户 {user_name} 的ID. ID list: {user_id_to_name}")
-    #     return None
-    # return user_id
 
 def execute_action(action) -> str:
     """
@@ -358,6 +341,48 @@ def execute_action(action) -> str:
 def reply_group(user_name, message):
     return reply(user_name, message)
 
+def clean_message(message):
+    # 提取所有CQ码
+    cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
+    
+    # 初始化cleaned_message为原始消息
+    cleaned_message = message
+    
+    for cq_code in cq_codes:
+        cq_type, *params = cq_code.split(',')  # 获取CQ类型及其参数
+        
+        if cq_type == 'at':
+            # 将at消息替换为name，没有name则使用qq
+            at_name = None
+            at_qq = None
+            for param in params:
+                if param.startswith('name='):
+                    at_name = param.split('=')[1]
+                elif param.startswith('qq='):
+                    at_qq = param.split('=')[1]
+            if at_name:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', at_name)
+            elif at_qq:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', at_qq)
+        elif cq_type == 'image':
+            # 将图片CQ码替换为2字符哈希码
+            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
+            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
+        elif cq_type == 'face':
+            # 将表情CQ码替换为 表情:id 的形式
+            face_id = None
+            for param in params:
+                if param.startswith('id='):
+                    face_id = param.split('=')[1]
+                    break
+            if face_id:
+                cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'表情:{face_id}')
+        else:
+            # 移除其他CQ码
+            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
+    return cleaned_message
+
+
 def save_chat_memory(user_name, message, max_words=50):
     """
     保存聊天记录
@@ -369,31 +394,10 @@ def save_chat_memory(user_name, message, max_words=50):
     返回:
     list: 更新后的聊天记录
     """
-    # 保留 [CQ:at ...] 格式的内容，移除其他 [xxx] 格式的内容
-    # 提取所有CQ码
-    cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
-    
-    # 初始化cleaned_message为原始消息
-    cleaned_message = message
-    
-    for cq_code in cq_codes:
-        cq_type = cq_code.split(',')[0]  # 获取CQ类型
-        
-        if cq_type == 'at':
-            # 保留@消息
-            continue
-        elif cq_type == 'image':
-            # 将图片CQ码替换为2字符哈希码
-            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-        elif cq_type == 'face':
-            # 将表情CQ码替换为2字符哈希码
-            hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-        else:
-            # 移除其他CQ码
-            cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
-    cleaned_message = cleaned_message[:max_words]  # 限制字数
+    # new_msg = f"{user_name}说：{message}"
+    # gpt_utils.create_message(new_msg)
+
+    cleaned_message = message[:max_words]  # 限制字数
 
     if user_name==MINT_NAME:
         chat_memory.append({"role": "system", "content": cleaned_message})
@@ -443,3 +447,29 @@ def fetch_user_name(message: str) -> list:
     result = list(result)
     logging.info(f"fetch_user_name: {message} -> {result}")
     return result
+
+def mute_user(user_name: str, duration: float) -> str:
+    user_id = get_user_id(user_name)
+    if  user_id is None:
+        return f"无法找到用户{user_name}"
+    llob_utils.set_group_ban(current_group_id, user_id, duration)
+    return "成功禁言"
+
+function_map = {
+    "mute_user": mute_user
+}
+
+def function_call(function_name, arguments):
+    """
+    调用函数
+
+    参数:
+    function_name (str): 函数名
+    arguments (dict): 函数参数
+
+    返回:
+    str: 函数返回值"""
+    if function_name in function_map:
+        return function_map[function_name](**arguments)
+    else:
+        logging.warning(f"未知的函数：{function_name}")

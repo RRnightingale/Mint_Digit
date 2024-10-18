@@ -9,17 +9,31 @@ import logging
 import traceback
 from openai import OpenAI
 import os
+import json
+from typing_extensions import Literal
 from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
+assistant_id = "asst_qnaMzpoY0Om2VvtV5FuxulX1"  # 阿敏assis
+THREAD_ID = "thread_StV3HoqfMz2HyztpG1iI8IaC"  # QQ GROUP
 
 # 从环境变量中获取OpenAI API密钥
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     raise ValueError("请在.env文件中设置OPENAI_API_KEY")
 
-client = OpenAI(api_key=openai_api_key)
+# client = OpenAI(api_key=openai_api_key)
+# MODEL = "gpt-4o-mini"
+
+client = OpenAI(
+    api_key='EMPTY',
+    base_url='http://192.168.1.21:8000/v1',
+)
+
+# MODEL = "qwen2-7b-instruct"
+MODEL = client.models.list().data[0].id
 
 def chat(msg: list):
     """
@@ -32,8 +46,10 @@ def chat(msg: list):
     """
     try:
         completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=msg
+            model=MODEL,
+            messages=msg,
+            temperature=0.8,
+            timeout=60
         )
         reply = completion.choices[0].message.content
         
@@ -63,3 +79,41 @@ def dell_e_image(prompt: str, height=1024, width=1024) -> str:
     image_url = response.data[0].url
 
     return image_url
+
+
+def create_message(content,
+                   role: Literal["user", "assistant"] = "user",
+                   timeout=60,
+                   thread_id=THREAD_ID):
+    message = client.beta.threads.messages.create(thread_id,
+                                                  content=content,
+                                                  role=role,
+                                                  timeout=timeout)
+    return message
+
+
+def run_assistant(thread_id=THREAD_ID, function_call=None) -> str:
+    run = client.beta.threads.runs.create_and_poll(
+        assistant_id=assistant_id, thread_id=thread_id, timeout=60)
+    while run:
+        if run.status == 'completed':
+            messages = client.beta.threads.messages.list(
+                thread_id=thread_id, run_id=run.id)
+            rsp = ""
+            for message in messages:
+                rsp += message.content[0].text.value
+            return rsp
+        elif run.status == 'requires_action':
+            tool_call = run.required_action.submit_tool_outputs.tool_calls[0]
+            name = tool_call.function.name
+            arguments = json.loads(tool_call.function.arguments)
+            output = function_call(name, arguments)
+            run = client.beta.threads.runs.submit_tool_outputs_and_poll(thread_id=thread_id, run_id=run.id,tool_outputs=[
+                    {
+                        "tool_call_id": tool_call.id,
+                        "output": output,
+                    }
+                ])
+        else:
+            logging.error(f"Unknown run status: {run}")
+            return "系统-崩溃-嘎嘎"
