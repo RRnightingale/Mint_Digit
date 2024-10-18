@@ -61,6 +61,28 @@ class TestMintUtils(unittest.TestCase):
         result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
         self.assertIn("唐傀", result)  # 
 
+    def test_clean_message_with_at_and_faces(self):
+        # 测试包含CQ表情和at消息的清理
+        message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265] @小明"
+        expected_cleaned_message = "夜鹰257230693说：表情:15表情:265 @小明"
+
+        # 调用清理消息的函数
+        cleaned_message = mint_utils.clean_message(message)
+
+        # 验证清理后的消息是否符合预期
+        self.assertEqual(cleaned_message, expected_cleaned_message)
+
+    def test_clean_message_with_only_faces(self):
+        # 测试仅包含CQ表情的消息清理
+        message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265]"
+        expected_cleaned_message = "夜鹰257230693说：表情:15表情:265"
+
+        # 调用清理消息的函数
+        cleaned_message = mint_utils.clean_message(message)
+
+        # 验证清理后的消息是否符合预期
+        self.assertEqual(cleaned_message, expected_cleaned_message)
+
 
 if __name__ == '__main__':
     unittest.main()

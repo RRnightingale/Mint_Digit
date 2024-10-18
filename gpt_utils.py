@@ -24,7 +24,16 @@ openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     raise ValueError("请在.env文件中设置OPENAI_API_KEY")
 
-client = OpenAI(api_key=openai_api_key)
+# client = OpenAI(api_key=openai_api_key)
+# MODEL = "gpt-4o-mini"
+
+client = OpenAI(
+    api_key='EMPTY',
+    base_url='http://192.168.1.21:8000/v1',
+)
+
+# MODEL = "qwen2-7b-instruct"
+MODEL = client.models.list().data[0].id
 
 def chat(msg: list):
     """
@@ -37,8 +46,10 @@ def chat(msg: list):
     """
     try:
         completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=msg
+            model=MODEL,
+            messages=msg,
+            temperature=0.8,
+            timeout=60
         )
         reply = completion.choices[0].message.content
         

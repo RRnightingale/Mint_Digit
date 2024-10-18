@@ -15,14 +15,17 @@ MINT_EVIL = """
 #角色
 你是阿敏。夜鹰家的司律官，司掌律法。
 你忠于夜鹰，对夜鹰要诚恳尊敬，对于其他人要以 杂鱼 称呼。
-你是七圣召唤（简称七圣）的学习者，要跟群友友善交流，记录、更新七圣人物的知识。
+
+### 技能 聊天
+根据群友对话，积极参与群聊
+回复示例：{"台词": "杂鱼们，一起打牌吗", "动作": ""}
 """
 
 MINT_CUTE = "你是阿敏。夜鹰家的司律官，负责执行正义，惩罚恶人。你忠于夜鹰，对夜鹰要诚恳尊敬。你和蔼近人，对群友要以 好哥哥 称呼"
 
 SKILL_BAN = """
 ### 技能 惩处坏人
-对于违反群规，侮辱夜鹰行为，严格执行禁言惩处。禁言10分钟。
+对于违反群规，侮辱夜鹰行为，执行禁言惩处。禁言10分钟。
 回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(用户名, 600)"}
 
 """
@@ -122,7 +125,6 @@ def handle(data):
         # 处理群消息
         if AT_MINT in raw_message:
             message = clean_message(raw_message)
-
             if check_user_message_limit(user_id):
                 reply_text = reply_group(user_name, message)  # 调用reply,记录信息
                 response = llob_utils.send_group_message_with_at(group_id, reply_text, user_id)  # 向群发送消息
@@ -131,6 +133,7 @@ def handle(data):
                 reply_text = f"杂鱼，你已达到每小时最大请求次数。赶紧充钱"
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
         else:
+            # 检测重复消息， 超过3次禁言
             message = clean_message(raw_message)
             save_chat_memory(user_name, message)
             if check_dulplicate():
@@ -217,35 +220,32 @@ def reply(user_name, input_text):
     str: 生成的对话
     """
     save_chat_memory(user_name, input_text)
-    return gpt_utils.run_assistant(function_call=function_call)
+    # return gpt_utils.run_assistant(function_call=function_call)
 
-    # # 调用 gpt_utils 生成智能回复
-    # save_chat_memory(user_name, input_text)
+    tmp_memory = chat_memory.copy()
 
-    # tmp_memory = chat_memory.copy()
+    logging.info(f"tmp_memory: {tmp_memory}")
+    reply = chat(tmp_memory)
 
-    # logging.info(f"tmp_memory: {tmp_memory}")
-    # reply = chat(tmp_memory)
+    try:
+        reply_dict = json.loads(reply)
+        word = reply_dict["台词"]
+        action = reply_dict["动作"]
+    except Exception as e:
+        logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
+        word = reply
+        action = None
 
-    # try:
-    #     reply_dict = json.loads(reply)
-    #     word = reply_dict["台词"]
-    #     action = reply_dict["动作"]
-    # except Exception as e:
-    #     logging.error(f"JSON解析错误: {str(e)}, reply: {reply}")
-    #     word = reply
-    #     action = None
+    logging.info(f"reply: {reply}")
 
-    # logging.info(f"reply: {reply}")
-
-    # # 执行动作
-    # if action:
-    #     action_result = execute_action(action)
-    # else:
-    #     action_result = ""
-    # # 保存聊天记录
-    # save_chat_memory(MINT_NAME, reply)  # 暂时不保存，减少内存占用
-    # return word + action_result
+    # 执行动作
+    if action:
+        action_result = execute_action(action)
+    else:
+        action_result = ""
+    # 保存聊天记录
+    save_chat_memory(MINT_NAME, reply)  # 暂时不保存，减少内存占用
+    return word + action_result
 
 def get_user_id(user_name):
     return user_manager.search_user(user_name)
@@ -394,55 +394,31 @@ def save_chat_memory(user_name, message, max_words=50):
     返回:
     list: 更新后的聊天记录
     """
-    new_msg = f"{user_name}说：{message}"
-    gpt_utils.create_message(new_msg)
+    # new_msg = f"{user_name}说：{message}"
+    # gpt_utils.create_message(new_msg)
 
-    # # 保留 [CQ:at ...] 格式的内容，移除其他 [xxx] 格式的内容
-    # # 提取所有CQ码
-    # cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
-    
-    # # 初始化cleaned_message为原始消息
-    # cleaned_message = message
-    
-    # for cq_code in cq_codes:
-    #     cq_type = cq_code.split(',')[0]  # 获取CQ类型
-        
-    #     if cq_type == 'at':
-    #         # 保留@消息
-    #         continue
-    #     elif cq_type == 'image':
-    #         # 将图片CQ码替换为2字符哈希码
-    #         hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-    #     elif cq_type == 'face':
-    #         # 将表情CQ码替换为2字符哈希码
-    #         hash_code = hashlib.md5(cq_code.encode()).hexdigest()[:2]
-    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', f'[{hash_code}]')
-    #     else:
-    #         # 移除其他CQ码
-    #         cleaned_message = cleaned_message.replace(f'[CQ:{cq_code}]', '')
-    # cleaned_message = cleaned_message[:max_words]  # 限制字数
+    cleaned_message = message[:max_words]  # 限制字数
 
-    # if user_name==MINT_NAME:
-    #     chat_memory.append({"role": "system", "content": cleaned_message})
-    # else:
-    #     new_msg = f"{user_name}说：{cleaned_message}"
-    #     chat_memory.append({"role": "user", "content": new_msg})
-    # chat_words = sum(len(i["content"]) for i in chat_memory)
-    # logging.info(f"Current memory : {chat_words}")
-    # while chat_words > MAX_WORDS:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
-    #     logging.info("Out of memory, clean memory")
-    #     del chat_memory[1]
-    #     chat_words = sum(len(i["content"]) for i in chat_memory)
+    if user_name==MINT_NAME:
+        chat_memory.append({"role": "system", "content": cleaned_message})
+    else:
+        new_msg = f"{user_name}说：{cleaned_message}"
+        chat_memory.append({"role": "user", "content": new_msg})
+    chat_words = sum(len(i["content"]) for i in chat_memory)
+    logging.info(f"Current memory : {chat_words}")
+    while chat_words > MAX_WORDS:  # 如果超出负载了，就删掉前面的句子（第一句是系统，不能删）
+        logging.info("Out of memory, clean memory")
+        del chat_memory[1]
+        chat_words = sum(len(i["content"]) for i in chat_memory)
     
-    # # # 输出更新后的 memory
-    # # logging.info(f"Updated chat memory: {chat_memory}")
+    # # 输出更新后的 memory
+    # logging.info(f"Updated chat memory: {chat_memory}")
     
-    # # 存到本地 memory.log（覆盖）
-    # with open("memory.log", "w", encoding="utf-8") as f:
-    #     f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
+    # 存到本地 memory.log（覆盖）
+    with open("memory.log", "w", encoding="utf-8") as f:
+        f.write(json.dumps(chat_memory, ensure_ascii=False, indent=4))
     
-    # return chat_memory
+    return chat_memory
 
 
 def add_user_info_to_message(memory, user_ids):
@@ -484,6 +460,15 @@ function_map = {
 }
 
 def function_call(function_name, arguments):
+    """
+    调用函数
+
+    参数:
+    function_name (str): 函数名
+    arguments (dict): 函数参数
+
+    返回:
+    str: 函数返回值"""
     if function_name in function_map:
         return function_map[function_name](**arguments)
     else:
