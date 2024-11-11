@@ -26,14 +26,18 @@ if not openai_api_key:
 
 # client = OpenAI(api_key=openai_api_key)
 # MODEL = "gpt-4o-mini"
+MODEL = 'GPT-4o'
+url = 'http://192.168.1.21:2333/v1'
 
-client = OpenAI(
-    api_key='EMPTY',
-    base_url='http://192.168.1.21:8000/v1',
-)
+client = OpenAI(api_key=openai_api_key, base_url=url)
+
+# client = OpenAI(
+#     api_key='EMPTY',
+#     base_url='http://192.168.1.21:8000/v1',
+# )
 
 # MODEL = "qwen2-7b-instruct"
-MODEL = client.models.list().data[0].id
+# MODEL = client.models.list().data[0].id
 
 def chat(msg: list):
     """
