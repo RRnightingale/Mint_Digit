@@ -1,8 +1,10 @@
 import gpt_utils
 import doubao_utils
 import gemini_utils
+import grok_utils
 import llob_utils
 import asset_utils
+from memory import ChatMemory
 import user_manager
 import re
 import logging
@@ -20,7 +22,7 @@ import os
 # 初始化ChatMemory
 chat_memory = memory.create_chat_memory(type='evil')
 
-MAX_WORDS = 700
+MAX_WORDS = 900
 AT_MINT = "[CQ:at,qq=3995633031"
 MAX_MESSAGES_PER_HOUR = 10
 current_group_id = None     # 群ID
@@ -61,7 +63,7 @@ def handle(data):
 
     if message_type == 'private':
         # 处理私信
-        reply_text = reply(user_name, raw_message)  # 调用reply
+        reply_text = reply_without_action(user_name, raw_message)  # 调用reply
         logging.debug(f"生成的回复: {reply_text}")
         response = llob_utils.send_private_message(user_id, reply_text)  # 向user发送私信
         logging.debug(f"发送消息的响应: status_code = {response.status_code}, text = {response.text}")
@@ -90,7 +92,7 @@ def handle(data):
                 # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
                 instruction = f"{user_name} 在群里发重复信息，被禁言 10 分钟,你是执行官，请你对其宣判结果"
                 instructer = "夜鹰"
-                reply_text = reply(instructer, instruction)
+                reply_text = reply_without_action(instructer, instruction)
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
     else:
         logging.error("未知的消息类型或缺少群ID")
@@ -151,16 +153,26 @@ def check_dulplicate():
         return False
 
 
-def chat(chat_memory, user_name, input_text, model='gemini'):
+def chat(chat_memory: ChatMemory, user_name, input_text, model='grok') -> str:
+    """TODO 目前默认参数定模型"""
     message = f"{user_name} 说：{input_text}"
     if model == 'gpt':  
-        reply = gpt_utils.chat(chat_memory)
+        chat_memory.save_chat_memory(user_name, input_text)
+        messages = chat_memory.get_gpt_compatible_memory()
+        reply = gpt_utils.chat(messages)
     elif model == 'doubao':
-        reply = doubao_utils.chat(chat_memory)
+        chat_memory.save_chat_memory(user_name, input_text)
+        messages = chat_memory.get_gpt_compatible_memory()
+        reply = doubao_utils.chat(messages)
+    elif model == 'grok':
+        chat_memory.save_chat_memory(user_name, input_text)
+        # messages = chat_memory.get_gpt_compatible_memory()
+        # reply = grok_utils.chat(chat_memory)
+        reply = grok_utils.chat_with_function(chat_memory, function_call)
     elif model == 'gemini':
         reply = gemini_utils.chat(chat_memory, message=message)
+        chat_memory.save_chat_memory(user_name, input_text)
 
-    chat_memory.save_chat_memory(user_name, input_text)
     return reply
 
 def reply(user_name, input_text):
@@ -199,6 +211,27 @@ def reply(user_name, input_text):
     # 保存机器人的回复
     chat_memory.save_chat_memory(MINT_NAME, reply)
     return word + action_result
+
+
+def reply_without_action(user_name, input_text):
+    """
+    生成对话的函数
+
+    参数:
+    user_name (str): 用户名
+    input_text (str): 输入的文字
+
+    返回:
+    str: 生成的对话
+    """
+    reply = chat(chat_memory, user_name, input_text)
+    tmp_memory = chat_memory.get_memory()
+    # logging.info(f"tmp_memory: {tmp_memory}")
+    logging.info(f"reply: {reply}")
+    # 保存机器人的回复
+    chat_memory.save_chat_memory(MINT_NAME, reply)
+    return reply
+
 def get_user_id(user_name):
     return user_manager.search_user(user_name)
 
@@ -291,7 +324,7 @@ def execute_action(action) -> str:
     return "执行出错"
 
 def reply_group(user_name, message):
-    return reply(user_name, message)
+    return reply_without_action(user_name, message)
 
 def add_user_info_to_message(memory, user_ids):
     message = ""
@@ -307,6 +340,7 @@ FETCH_USER_NAME_PROMPT = """
 输出：
 唐傀, 小铭
 """
+
 def fetch_user_name(message: str) -> list:
     chat_message = [{"role": "system", "content": FETCH_USER_NAME_PROMPT}, {"role": "user", "content": message}]
     reply = chat(chat_message)
