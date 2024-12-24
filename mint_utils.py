@@ -90,9 +90,10 @@ def handle(data):
                 logging.info(
                     f"check_dulplicate: memory = {chat_memory.get_memory()}")
                 # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
-                instruction = f"{user_name} 在群里发重复信息，被禁言 10 分钟,你是执行官，请你对其宣判结果"
+                instruction = f"{user_name} 在群里发重复信息，你是执行官，请你对其禁言 10 分钟, 说明缘由"
                 instructer = "夜鹰"
-                reply_text = reply_without_action(instructer, instruction)
+                reply_text = reply_without_action(
+                    instructer, instruction, tool_choice="required")
                 llob_utils.send_group_message_with_at(group_id, reply_text, user_id)
     else:
         logging.error("未知的消息类型或缺少群ID")
@@ -153,7 +154,7 @@ def check_dulplicate():
         return False
 
 
-def chat(chat_memory: ChatMemory, user_name, input_text, model='grok') -> str:
+def chat(chat_memory: ChatMemory, user_name, input_text, model='grok', tool_choice="auto") -> str:
     """TODO 目前默认参数定模型"""
     message = f"{user_name} 说：{input_text}"
     if model == 'gpt':  
@@ -168,7 +169,8 @@ def chat(chat_memory: ChatMemory, user_name, input_text, model='grok') -> str:
         chat_memory.save_chat_memory(user_name, input_text)
         # messages = chat_memory.get_gpt_compatible_memory()
         # reply = grok_utils.chat(chat_memory)
-        reply = grok_utils.chat_with_function(chat_memory, function_call)
+        reply = grok_utils.chat_with_function(
+            chat_memory, function_call, tool_choice=tool_choice)
     elif model == 'gemini':
         reply = gemini_utils.chat(chat_memory, message=message)
         chat_memory.save_chat_memory(user_name, input_text)
@@ -213,7 +215,7 @@ def reply(user_name, input_text):
     return word + action_result
 
 
-def reply_without_action(user_name, input_text):
+def reply_without_action(user_name, input_text, tool_choice="auto"):
     """
     生成对话的函数
 
@@ -224,8 +226,8 @@ def reply_without_action(user_name, input_text):
     返回:
     str: 生成的对话
     """
-    reply = chat(chat_memory, user_name, input_text)
-    tmp_memory = chat_memory.get_memory()
+    reply = chat(chat_memory, user_name, input_text, tool_choice=tool_choice)
+    # tmp_memory = chat_memory.get_memory()
     # logging.info(f"tmp_memory: {tmp_memory}")
     logging.info(f"reply: {reply}")
     # 保存机器人的回复
@@ -354,11 +356,15 @@ def fetch_user_name(message: str) -> list:
     logging.info(f"fetch_user_name: {message} -> {result}")
     return result
 
+
 def mute_user(user_name: str, duration: float) -> str:
+    global current_group_id
     user_id = get_user_id(user_name)
     if  user_id is None:
+        logging.info(f"禁言用户{user_name}失败")
         return f"无法找到用户{user_name}"
     llob_utils.set_group_ban(current_group_id, user_id, duration)
+    logging.info(f"禁言用户{user_name} {duration} 秒")
     return "成功禁言"
 
 function_map = {

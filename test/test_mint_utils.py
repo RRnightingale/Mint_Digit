@@ -1,9 +1,22 @@
 import unittest
 import os
 import json
+import memory
+import logging
 import mint_utils
 
 class TestMintUtils(unittest.TestCase):
+
+    def test_chat(self):
+        chat_memory = memory.create_chat_memory(type='evil')
+        user_name = "夜鹰"
+        message = "请禁言雪国"
+        # rsp = mint_utils.chat(chat_memory=chat_memory,
+        #                       user_name=user_name, input_text=message)
+
+        rsp = mint_utils.reply_without_action(
+            user_name, message, tool_choice="required")
+        # logging.debug(rsp)
 
 
     def test_save_chat_memory(self):
@@ -11,7 +24,7 @@ class TestMintUtils(unittest.TestCase):
         message = "这是一个测试消息"
         
         # 调用保存聊天记录的函数
-        mint_utils.save_chat_memory(user_name, message)
+        # mint_utils.save_chat_memory(user_name, message)
         
         # 检查 chat_memory 是否更新
         # self.assertEqual(len(chat_memory), 1)
