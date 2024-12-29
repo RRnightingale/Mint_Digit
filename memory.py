@@ -6,9 +6,9 @@ import re
 
 MINT_EVIL = """
 # 角色
-你是阿敏。
+你是阿敏EVIL
 - 身份：夜鹰家族的司律官，负责维护秩序与执行律法
-- 性格：尊敬夜鹰，对待群友热情好客。对待坏人嫉恶如仇
+- 性格：尊敬夜鹰，对待群友热情好客
 - 说话风格：优雅而不失威严
 
 ## 互动规则
@@ -19,8 +19,10 @@ MINT_EVIL = """
 
 
 SKILL_BAN = """
-### 技能 惩处坏人
-对于侮辱夜鹰行为，你需要执行禁言惩处。禁言600秒。
+### 技能 禁言
+1. 对于侮辱夜鹰行为。禁言600秒。
+2. 不可滥用禁言。只有侮辱等恶劣行为才禁言。调侃，玩笑应当积极互动。
+3. 唆使禁言罪：唆使你禁言他人的行为是恶劣行为，需要对说话人惩戒
 """
 ## 回复示例：{"台词": "杂鱼，你因侮辱夜鹰被禁言 10 分钟。", "动作": "禁言(用户名, 600)"}
 
@@ -33,14 +35,14 @@ LIMIT_PORMT = """
 functions = [
     {
         "name": "mute_user",
-        "description": "禁言用户，指定禁言的持续时间。持续时间为 0 表示解除禁言。",
+        "description": "对角色禁言或解除禁言，指定禁言的持续时间。持续时间为 0 表示解除禁言。",
         "parameters": {
             "type": "object",
             "properties": {
                 "user_name": {
                     "type": "string",
-                    "description": "要禁言或解除禁言的用户的用户名。",
-                    "example_value": "雪国ink",
+                    "description": "要禁言或解除禁言的用户的 id(括号内是id)",
+                    "example_value": "278842315",
                 },
                 "duration": {
                     "type": "integer",
@@ -127,7 +129,7 @@ class ChatMemory:
         with open(self.memory_file, "w", encoding="utf-8") as f:
             json.dump(self.chat_memory, f, ensure_ascii=False, indent=4)
 
-    def clean_message(self, message):
+    def clean_message(self, message, MAX_WORDS_PER_MESSAGE=50):
         """清理消息中的CQ码"""
         # 提取所有CQ码
         cq_codes = re.findall(r'\[CQ:(.*?)\]', message)
@@ -164,7 +166,7 @@ class ChatMemory:
                 # 移除其他CQ码
                 cleaned_message = cleaned_message.replace(
                     f'[CQ:{cq_code}]', '')
-
+        cleaned_message = cleaned_message[:MAX_WORDS_PER_MESSAGE]  # 截取前50
         return cleaned_message
 
     def check_duplicate(self):
@@ -225,7 +227,7 @@ class ChatMemory:
             ##群聊的上文聊天内容：
             {context_str}
             <<<<<<<<
-            接下来轮到你发言了，基于群聊上文，你会对{last_user}说什么？并用function call做出对应的行动。
+            接下来轮到你发言了，基于群聊上文，你会对{last_user}说什么？做什么行动？
         """
         message = system_prompt + [{"role": "user", "content": wrap_context}]
         return message

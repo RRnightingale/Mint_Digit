@@ -94,3 +94,21 @@ def set_group_ban(group_id, user_id, duration=10 * 60):
     response = requests.post(f'{BASE_URL}/set_group_ban', json=payload)
     logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
     return response
+
+
+def set_group_add_request(flag: str, approve=False, reason="阿敏认为你的赞美不够真诚"):
+    """
+    处理入群请求
+    flag: 请求id
+    approve: 是否通过
+    reason: 拒绝原因
+    """
+
+    payload = {
+        'flag': flag,
+        'approve': approve,
+        'reason': reason
+    }
+    response = requests.post(f'{BASE_URL}/set_group_add_request', json=payload)
+    logging.debug(f"响应状态码: {response.status_code}, 响应内容: {response.text}")
+    return response

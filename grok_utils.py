@@ -11,7 +11,7 @@ from memory import ChatMemory
 load_dotenv()
 
 # 从环境变量中获取API密钥
-API_KEY = os.getenv("GROK_API_KEY")  # 从 .env 文件中获取 GROK_API_KEY
+API_KEY = os.getenv("XAI_API_KEY")  # 从 .env 文件中获取 GROK_API_KEY
 if not API_KEY:
     raise ValueError("请在.env文件中设置 GROK_API_KEY")
 
@@ -23,6 +23,15 @@ client = OpenAI(
     base_url="https://api.x.ai/v1",
 )
 
+
+def chat_direct(messages):
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=messages
+    )
+
+    logging.debug(response)
+    return response.choices[0].message.content
 
 def chat(memory: ChatMemory):
     """

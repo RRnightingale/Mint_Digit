@@ -4,7 +4,10 @@ import mint_utils
 import logging
 
 # 配置日志
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
+
+logger = logging.getLogger()  # 拿到root logger
+logger.setLevel(logging.INFO)
 
 app = FastAPI()
 
