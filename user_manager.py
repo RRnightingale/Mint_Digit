@@ -7,6 +7,10 @@ import re
 _users = {}
 _file_path = 'user_info.json'  # 用户信息文件的路径
 
+
+# class User:
+
+
 def clean_username(user_name):
     """移除用户名中的空格和特殊字符（仅保留中英文、数字）"""
     return re.sub(r'\s+|[^a-zA-Z0-9\u4e00-\u9fa5]', '', user_name)

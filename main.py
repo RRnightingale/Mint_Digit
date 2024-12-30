@@ -7,7 +7,7 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger()  # 拿到root logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 

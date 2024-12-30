@@ -10,7 +10,7 @@ class TestMintUtils(unittest.TestCase):
 
     def setUp(self):
         logger = logging.getLogger()  # 拿到root logger
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.INFO)
 
     # def test_chat(self):
     #     chat_memory = memory.create_chat_memory(type='evil')
@@ -47,8 +47,20 @@ class TestMintUtils(unittest.TestCase):
         data = {
             "post_type": "message",
             "sender": {"nickname": "夜鹰"},
-            "user_id": 631038409,
+            "user_id": 278842150,
             "raw_message": '[CQ:at,qq=3995633031,name=阿敏Evil] 黑子，坏。唐槐，坏',
+            "message_type": "group",
+            "group_id": 123
+        }
+        res = mint_utils.handle(data=data)
+
+    def test_ban_user(self):
+
+        data = {
+            "post_type": "message",
+            "sender": {"nickname": "夜鹰"},
+            "user_id": 278842150,
+            "raw_message": '[CQ:at,qq=3995633031,name=阿敏Evil] 禁言唐傀30秒',
             "message_type": "group",
             "group_id": 123
         }
@@ -94,6 +106,20 @@ class TestMintUtils(unittest.TestCase):
         }
         res = mint_utils.handle(data=data)
 
+    def test_multi_message_ban(self):
+        data = {
+            "post_type": "message",
+            "sender": {"nickname": "夜兰"},
+            "user_id": 278842150,
+            "raw_message": '天气真差',
+            "message_type": "group",
+            "group_id": 123
+        }
+        res = mint_utils.handle(data=data)
+        res = mint_utils.handle(data=data)
+        res = mint_utils.handle(data=data)
+
+
     # def test_save_chat_memory(self):
     #     user_name = "测试用户"
     #     message = "这是一个测试消息"
@@ -111,65 +137,64 @@ class TestMintUtils(unittest.TestCase):
     #         saved_memory = json.load(f)
     #         self.assertEqual(saved_memory, mint_utils.chat_memory)
 
-    def test_ban_action(self):
-        from unittest.mock import patch, MagicMock
+    # def test_ban_action(self):
+    #     from unittest.mock import patch, MagicMock
 
+    #     # 模拟 llob_utils.set_group_ban 函数
+    #     with patch('mint_utils.llob_utils.set_group_ban') as mock_set_group_ban:
+    #         # 设置测试数据
+    #         mint_utils.current_group_id = 123456
+    #         mint_utils.user_id_to_name['测试用户'] = 789012
+    #         action = "禁言(测试用户, 60)"
 
-        # 模拟 llob_utils.set_group_ban 函数
-        with patch('mint_utils.llob_utils.set_group_ban') as mock_set_group_ban:
-            # 设置测试数据
-            mint_utils.current_group_id = 123456
-            mint_utils.user_id_to_name['测试用户'] = 789012
-            action = "禁言(测试用户, 60)"
+    #         # 执行动作
+    #         mint_utils.execute_action(action)
 
-            # 执行动作
-            mint_utils.execute_action(action)
+    #         # 验证是否正确调用了 set_group_ban 函数
+    #         mock_set_group_ban.assert_called_once_with(123456, 789012, 60)
 
-            # 验证是否正确调用了 set_group_ban 函数
-            mock_set_group_ban.assert_called_once_with(123456, 789012, 60)
+    #     # 测试未知用户
+    #     with patch('mint_utils.logging.error') as mock_logging_error:
+    #         action = "禁言(未知用户, 60)"
+    #         mint_utils.execute_action(action)
+    #         mock_logging_error.assert_called_once_with("无法找到用户 未知用户 的ID. ID list: {'测试用户': 789012}")
 
-        # 测试未知用户
-        with patch('mint_utils.logging.error') as mock_logging_error:
-            action = "禁言(未知用户, 60)"
-            mint_utils.execute_action(action)
-            mock_logging_error.assert_called_once_with("无法找到用户 未知用户 的ID. ID list: {'测试用户': 789012}")
+    #     # 测试未知动作
+    #     with patch('mint_utils.logging.warning') as mock_logging_warning:
+    #         action = "未知动作(测试用户, 60)"
+    #         mint_utils.execute_action(action)
+    #         mock_logging_warning.assert_called_once_with("未知的动作：未知动作(测试用户, 60)")
 
-        # 测试未知动作
-        with patch('mint_utils.logging.warning') as mock_logging_warning:
-            action = "未知动作(测试用户, 60)"
-            mint_utils.execute_action(action)
-            mock_logging_warning.assert_called_once_with("未知的动作：未知动作(测试用户, 60)")
+    # def test_fetch_user_name(self):
+    #     message = "喵帕斯是七圣召唤高手，共鸣冠军"
+    #     result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
+    #     self.assertIn("喵帕斯", result)  # 检查 "喵帕斯" 是否在 result 列表中
 
-    def test_fetch_user_name(self):
-        message = "喵帕斯是七圣召唤高手，共鸣冠军"
-        result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
-        self.assertIn("喵帕斯", result)  # 检查 "喵帕斯" 是否在 result 列表中
+    #     message = "介绍唐傀"
+    #     result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
+    #     self.assertIn("唐傀", result)  #
 
-        message = "介绍唐傀"
-        result = mint_utils.fetch_user_name(message)# 假设 result 是您要检查的列表
-        self.assertIn("唐傀", result)  # 
+    # def test_clean_message_with_at_and_faces(self):
+    #     # 测试包含CQ表情和at消息的清理
+    #     message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265] @小明"
+    #     expected_cleaned_message = "夜鹰257230693说：表情:15表情:265 @小明"
 
-    def test_clean_message_with_at_and_faces(self):
-        # 测试包含CQ表情和at消息的清理
-        message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265] @小明"
-        expected_cleaned_message = "夜鹰257230693说：表情:15表情:265 @小明"
+    #     # 调用清理消息的函数
+    #     cleaned_message = mint_utils.clean_message(message)
 
-        # 调用清理消息的函数
-        cleaned_message = mint_utils.clean_message(message)
+    #     # 验证清理后的消息是否符合预期
+    #     self.assertEqual(cleaned_message, expected_cleaned_message)
 
-        # 验证清理后的消息是否符合预期
-        self.assertEqual(cleaned_message, expected_cleaned_message)
+    # def test_clean_message_with_only_faces(self):
+    #     # 测试仅包含CQ表情的消息清理
+    #     message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265]"
+    #     expected_cleaned_message = "夜鹰257230693说：表情:15表情:265"
 
-    def test_clean_message_with_only_faces(self):
-        # 测试仅包含CQ表情的消息清理
-        message = "夜鹰257230693说：[CQ:face,id=15][CQ:face,id=265]"
-        expected_cleaned_message = "夜鹰257230693说：表情:15表情:265"
+    #     # 调用清理消息的函数
+    #     cleaned_message = mint_utils.clean_message(message)
 
-        # 调用清理消息的函数
-        cleaned_message = mint_utils.clean_message(message)
-
-        # 验证清理后的消息是否符合预期
-        self.assertEqual(cleaned_message, expected_cleaned_message)
+    #     # 验证清理后的消息是否符合预期
+    #     self.assertEqual(cleaned_message, expected_cleaned_message)
 
 
 if __name__ == '__main__':

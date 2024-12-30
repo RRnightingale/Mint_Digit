@@ -1,4 +1,5 @@
 # utils for ll one bot
+# https://llonebot.apifox.cn/
 
 import requests
 import logging
@@ -74,7 +75,7 @@ def send_group_message_with_at(group_id, message, user_id):
     return response
 
 
-def set_group_ban(group_id, user_id, duration=10 * 60):
+def set_group_ban(group_id: int, user_id: int, duration=10 * 60):
     """
     设置群禁言
 

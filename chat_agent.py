@@ -6,6 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
+from langchain_community.embeddings import ZhipuAIEmbeddings
 
 import user_manager
 import llob_utils
@@ -17,6 +18,7 @@ MAX_HISTORY_MESSAGES = 20  # 最大历史条数
 MAX_WORDS_PER_MESSAGE = 50  # 每条信息content数
 app = None  # chat agent
 config = None
+embeddings = None
 
 
 @tool
@@ -27,7 +29,7 @@ def lc_mute_user(user_id: str, duration: float) -> str:
     user_id:  要禁言或解除禁言的用户的 id(括号内是id)
     duration:  禁言的持续时间（以秒为单位）。使用 0 来解除禁言。
     """
-    user_id = user_manager.search_user(user_id)
+    user_id = int(user_manager.search_user(user_id))
     if user_id is None:
         logging.info(f"禁言用户{user_name}失败")
         return f"无法找到用户{user_name}"
@@ -36,12 +38,19 @@ def lc_mute_user(user_id: str, duration: float) -> str:
     logging.info(result)
     return result
 
+# def init_retriever():
+#     docs = []
+#     for user_id in user_manager._users:
+#         # print(k)
+#         info = f"{k} {_users[k]}"
+#         doc = Document(page_content=info, metadata={"source": "user_info"})
+#         docs.append(doc)
 
 def init_app(model='grok'):
     """
     初始化llm
     """
-    global app, config
+    global app, config, embeddings
     load_dotenv()
 
     if model == 'grok':
@@ -103,6 +112,11 @@ def init_app(model='grok'):
 
     update_memory(content=system_prompt, message_type="system")
 
+    # init embeddings
+    embeddings = ZhipuAIEmbeddings(
+        model="embedding-3",
+    )
+
 
 def update_memory(content: str, message_type="human"):
     """
@@ -132,6 +146,22 @@ def chat(user_name: str, input_text: str, target_name: str = None):
     last_message.content = last_message.content[:MAX_WORDS_PER_MESSAGE]
     logging.info(messages)
     return reply
+
+
+def check_duplicate() -> bool:
+    """
+    检查是否有连续消息
+    """
+    user_messages = []
+    messages = app.get_state(config).values["messages"]
+    for message in reversed(messages):
+        if type(message) == HumanMessage:
+            content = message.content.split("说：")[1]
+            user_messages.append(content)
+            if len(user_messages) == 3:
+                break
+    flag = len(set(user_messages)) == 1 and len(user_messages) == 3
+    return flag
 
 
 init_app()
