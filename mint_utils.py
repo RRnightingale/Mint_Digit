@@ -60,8 +60,9 @@ def handle(data: dict):
 
         if message_type == 'private':
             # 处理私信， 私聊不做过滤（夜鹰通道）
+            user = user_manager.get_user_by_id(user_id=user_id)
             reply_text = chat_agent.chat(
-                user_name=user_name, input_text=raw_message)
+                user=user, input_text=raw_message)
             # reply_text = reply_without_action(
             #     user_name, raw_message)  # 调用reply
             logging.debug(f"生成的回复: {reply_text}")
@@ -73,6 +74,7 @@ def handle(data: dict):
             current_group_id = group_id  # 更新群id
 
             user_manager.update_user(user_id, {
+                "user_name": user_name,
                 "aliases": [nickname, group_user_name]
             })
 
@@ -80,9 +82,9 @@ def handle(data: dict):
             if AT_MINT in raw_message:
                 message = chat_memory.clean_message(raw_message)
                 if check_user_message_limit(user_id):
-
+                    user = user_manager.get_user_by_id(user_id=user_id)
                     reply_text = chat_agent.chat(
-                        user_name=user_name, input_text=message)
+                        user=user, input_text=raw_message)
                     # reply_text = reply_group(
                         # user_name, message)  # 调用reply,记录信息
                     response = llob_utils.send_group_message_with_at(
@@ -105,10 +107,9 @@ def handle(data: dict):
                     # llob_utils.set_group_ban(group_id, user_id, 10 * 60)
                     instruction = f"{user_id} 在群里发重复信息，你是执行官，请你对其禁言 10 分钟, 说明缘由"
                     instructer = "夜鹰"
-                    # reply_text = reply_without_action(
-                    #     instructer, instruction, tool_choice="required")
+                    user = user_manager.search_user(name=instructer)
                     reply_text = chat_agent.chat(
-                        user_name=instructer, input_text=instruction)
+                        user=user, input_text=instruction)
                     llob_utils.send_group_message_with_at(
                         group_id, reply_text, user_id)
         else:
@@ -127,7 +128,9 @@ def handle(data: dict):
             # if 赞美夜鹰 则 通过
             instruction = f"判断以下请求是否赞美夜鹰(需要内容为赞美，且赞美目标为夜鹰)，是则 回复【是】，否则回复【否】。不能包含其他回复: ---{comment}---"
             instructer = "夜鹰"
-            reply_text = chat_agent.chat(instructer, instruction)
+            user = user_manager.search_user(name=instructer)
+            reply_text = chat_agent.chat(
+                user=user, input_text=instruction)
 
             approve = "是" in reply_text  # 同意加群
             logging.info(f"{user_id} 申请加群， 结果 {approve}, {reply_text}")

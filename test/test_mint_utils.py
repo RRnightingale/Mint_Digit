@@ -12,17 +12,6 @@ class TestMintUtils(unittest.TestCase):
         logger = logging.getLogger()  # 拿到root logger
         logger.setLevel(logging.INFO)
 
-    # def test_chat(self):
-    #     chat_memory = memory.create_chat_memory(type='evil')
-    #     user_name = "夜鹰"
-    #     message = "请禁言雪国"
-    #     # rsp = mint_utils.chat(chat_memory=chat_memory,
-    #     #                       user_name=user_name, input_text=message)
-
-    #     rsp = mint_utils.reply_without_action(
-    #         user_name, message, tool_choice="required")
-        # logging.debug(rsp)
-
     def test_private_chat(self):
         data = {
             "post_type": "message",

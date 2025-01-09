@@ -8,7 +8,12 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
 from langchain_community.embeddings import ZhipuAIEmbeddings
 
+from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 import user_manager
+from user_manager import User
 import llob_utils
 import mint_utils
 import memory as mint_memory
@@ -38,15 +43,37 @@ def lc_mute_user(user_id: str, duration: float) -> str:
     logging.info(result)
     return result
 
-# def init_retriever():
-#     docs = []
-#     for user_id in user_manager._users:
-#         # print(k)
-#         info = f"{k} {_users[k]}"
-#         doc = Document(page_content=info, metadata={"source": "user_info"})
-#         docs.append(doc)
 
-def init_app(model='grok'):
+def init_retriever():
+    # init embeddings
+    embeddings = ZhipuAIEmbeddings(
+        model="embedding-3",
+    )
+
+    docs = []
+    for user_id, user in user_manager._users.items():
+        info = str(user)
+        doc = Document(page_content=info, metadata={"source": "user_info"})
+        docs.append(doc)
+
+    BATCH_SIZE = 64
+
+    chunks = [docs[i:i + BATCH_SIZE] for i in range(0, len(docs), BATCH_SIZE)]
+    faiss_store = None
+
+    for chunk in chunks:
+        if faiss_store is None:
+            # 第一次创建向量索引
+            faiss_store = FAISS.from_documents(chunk, embeddings)
+        else:
+            # 后续分批，用 add_documents() 追加向量
+            faiss_store.add_documents(chunk)
+
+    retriever = faiss_store.as_retriever(search_kwargs={"k": 2})  # k：返回索引数量
+    return retriever
+
+
+def init_app(model='zhipu'):
     """
     初始化llm
     """
@@ -58,11 +85,19 @@ def init_app(model='grok'):
         MODEL_NAME = "grok-2-1212"
         llm = ChatXAI(
             model=MODEL_NAME,
-            temperature=0,
+            temperature=0.5,
             max_tokens=None,
             timeout=None,
             max_retries=2
         )
+    elif model == 'zhipu':
+        from langchain_zhipu import ChatZhipuAI
+        MODEL_NAME = "glm-4-flash"
+        llm = ChatZhipuAI(
+            model=MODEL_NAME,
+            temperature=0.5,
+        )
+
     llm = llm.bind_tools([lc_mute_user])  # 增加禁言功能
 
     workflow = StateGraph(state_schema=MessagesState)
@@ -84,8 +119,28 @@ def init_app(model='grok'):
             return "compress_memory"
 
     def call_model(state: MessagesState):
-        response = llm.invoke(state["messages"])
+        messages = state["messages"]
+        response = llm.invoke(messages)
         return {"messages": response}
+
+    retriever = init_retriever()
+
+    def retrieve(state):
+        """
+        Retrieve documents
+        Args:
+            state (dict): The current graph state
+        Returns:
+            state (dict): New key added to state, documents, that contains retrieved documents
+        """
+        messages = state["messages"]
+        logging.debug(messages)
+        last_message = messages[-1]  # 最后一条信息
+        content = last_message.content
+
+        documents = retriever.invoke(content)
+        last_message.content = f"{content}\n<相关信息>\n{documents[0].page_content} {documents[1].page_content}"
+        return {"messages": messages}
 
     # Define the (single) node in the graph
     tools = [lc_mute_user]
@@ -94,8 +149,10 @@ def init_app(model='grok'):
     workflow.add_node("agent", call_model)
     workflow.add_node("tools", tool_node)
     workflow.add_node("compress_memory", compress_memory)
+    workflow.add_node("retrieve", retrieve)
 
-    workflow.add_edge(START, "agent")
+    workflow.add_edge(START, "retrieve")
+    workflow.add_edge("retrieve", "agent")
     workflow.add_conditional_edges("agent", should_continue, [
         "tools", "compress_memory"])
     workflow.add_edge("tools", "agent")
@@ -107,15 +164,9 @@ def init_app(model='grok'):
 
     config = {"configurable": {"thread_id": "mint "}}  # TODO thread id后续改为群id
 
-    system_prompt = mint_memory.MINT_EVIL + \
-        mint_memory.SKILL_BAN + mint_memory.LIMIT_PORMT  # 阿敏的系统初始prompt
+    system_prompt = mint_memory.MINT_EVIL  # 阿敏的系统初始prompt
 
     update_memory(content=system_prompt, message_type="system")
-
-    # init embeddings
-    embeddings = ZhipuAIEmbeddings(
-        model="embedding-3",
-    )
 
 
 def update_memory(content: str, message_type="human"):
@@ -128,14 +179,17 @@ def update_memory(content: str, message_type="human"):
         app.update_state(config, {"messages": SystemMessage(content)})
 
 
-def chat(user_name: str, input_text: str, target_name: str = None):
+def chat(user: User, input_text: str, target_name: str = None):
     """
         聊天
     """
+    user_name = user.user_name
     if target_name:
-        message = HumanMessage(f"{user_name}对{target_name} 说：{input_text}")
+        message = HumanMessage(
+            f"{user_name}对{target_name} 说：{input_text}\n<说话人信息>{str(user)}")
     else:
-        message = HumanMessage(f"{user_name} 说：{input_text}")
+        message = HumanMessage(
+            f"{user_name} 说：{input_text}\n<说话人信息>{str(user)}")
     input = {"messages": [message]}
     output = app.invoke(input, config=config)
     reply = output["messages"][-1].content
@@ -143,6 +197,7 @@ def chat(user_name: str, input_text: str, target_name: str = None):
     # 压缩记忆里的最后一句
     messages = app.get_state(config).values["messages"]
     last_message = messages[-1]
+    # 压缩回复信息
     last_message.content = last_message.content[:MAX_WORDS_PER_MESSAGE]
     logging.info(messages)
     return reply
