@@ -13,26 +13,19 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  应用层 (Application Layer)                                   │
-│  napcat_logger.py - FastAPI HTTP 服务入口                    │
+│  app.py - FastAPI HTTP 服务入口                              │
 └────────────────────┬────────────────────────────────────────┘
                      │ 调用
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  业务逻辑层 (Business Logic Layer)                            │
-│  dispatcher.py - 事件分发器                                   │
-│  strategies_basic.py - 事件处理策略                           │
+│  strategies_basic.py - Policy 策略类，统一处理意图识别和动作   │
 └────────────────────┬────────────────────────────────────────┘
                      │ 调用
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  领域模型层 (Domain Model Layer)                              │
 │  events.py - Event 和 BotReply 数据结构                       │
-└────────────────────┬────────────────────────────────────────┘
-                     │ 调用
-                     ↓
-┌─────────────────────────────────────────────────────────────┐
-│  应用协调层 (Application Coordination Layer)                  │
-│  message_sender.py - 消息发送协调器                           │
 └────────────────────┬────────────────────────────────────────┘
                      │ 调用
                      ↓
@@ -46,11 +39,10 @@
 ### 各层职责
 
 1. **应用层 (Application Layer)**
-   - `napcat_logger.py`：基于 FastAPI 的 HTTP 服务入口，监听来自 NapCat 的事件回调，接收请求后调用业务逻辑层进行处理，最后处理响应。
+   - `app.py`：基于 FastAPI 的 HTTP 服务入口，监听来自 NapCat 的事件回调，接收请求后直接调用 Policy 进行处理，最后处理响应。
 
 2. **业务逻辑层 (Business Logic Layer)**
-   - `dispatcher.py`：事件分发器，根据事件类型和是否 @阿敏 选择不同的处理策略。
-   - `strategies_basic.py`：实现具体的事件处理策略。
+   - `strategies_basic.py`：Policy 策略类，统一处理意图识别（条件判断）和动作执行。
 
 3. **领域模型层 (Domain Model Layer)**
    - `events.py`：定义核心数据结构 `Event` 和 `BotReply`，作为各层之间的数据交换契约。
@@ -75,8 +67,21 @@
 
 ## 数据与配置
 
-- **配置与环境变量**
-  - `NAPCAT_BASE_URL`：NapCat OneBot HTTP 服务端地址，默认值为 `http://127.0.0.1:3000`
+### 配置文件
+
+1. 复制配置模板：
+   ```bash
+   cp .env.example .env
+   ```
+
+2. 根据实际情况修改 `.env` 文件中的配置：
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `NAPCAT_BASE_URL` | NapCat OneBot HTTP 服务端地址 | `http://127.0.0.1:3000` |
+| `AMIN_QQ` | 阿敏的 QQ 号 | `3995633031` |
+
+**注意**：`.env` 文件已在 `.gitignore` 中，不会被提交到 git 仓库。
 
 ## 运行与依赖
 
@@ -89,6 +94,7 @@
   - `uvicorn`
 - 其他：
   - `requests`
+  - `python-dotenv`
 
 ### 运行方式
 
@@ -97,12 +103,16 @@
    pip install -r requirements.txt
    ```
 
-2. 启动服务：
+2. 配置环境变量：
+   - 复制 `.env.example` 为 `.env`
+   - 根据实际情况修改 `.env` 中的配置
+
+3. 启动服务：
    ```bash
-   python napcat_logger.py
+   python app.py
    ```
 
-3. 配置 NapCat：
+4. 配置 NapCat：
    - 在 NapCat 的 `onebot11.json` 配置文件中，将 `httpClients.url` 设置为：
      ```
      http://127.0.0.1:8081/
